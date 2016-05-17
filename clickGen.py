@@ -31,7 +31,7 @@ def writeClick(g, args):
         writeARPHandler(fh, numInputs)
     writeLinkShaping(fh, g, args)
     writeTTLDec(fh, nx.edges(g))
-    writeLinks(fh, g)
+    writeLinks(fh, g, args)
     writeDropPacketsOnRouters(fh, numInputs, in_routers)
     writeRoutersToInterfaces(fh, g, in_routers, arpLess)
     writeLocalDelivery(fh, g, nx.nodes(g), in_routers, arpLess)
@@ -124,50 +124,25 @@ def writeLinkShaping(fh, g, args):
             drop = delays[drop]
 
         qs = 1000
-        m = re.match("[0-9]+", bw)
-        if m:
-            val = float(m.group(0))
-            if re.search("Gb", bw):
-                val = val * 1000
-                if val >= 10000:
-                    qs = 10000
-                else:
-                    qs = int(val)
-            elif re.search("Mb", bw):
-                if val >= 10000:
-                    qs = 10000
-                else:
-                    qs = int(val)
-            else:
-                val = val / 1000
-                if val >= 10000:
-                    qs = 10000
-                else:
-                    qs = int(val)
-
-            if qs < 10:
-                qs = 10
                     
         fh.write("link_%d_%d_queue :: ThreadSafeQueue(%d);\n" % (e0, e1, qs))
-        fh.write("link_%d_%d_delay :: DelayShaper(%s);\n" % (e0, e1, delay))
-        fh.write("link_%d_%d_bw :: BandwidthShaper(%s);\n" % (e0, e1, bw))
+        fh.write("link_%d_%d_bw :: LinkUnqueue(%s, %s);\n" % (e0, e1, delay, bw))
         fh.write("link_%d_%d_loss :: RandomSample(DROP %s);\n" % (e0, e1, drop))
         fh.write("link_%d_%d_queue :: ThreadSafeQueue(%d);\n" % (e1, e0, qs))
-        fh.write("link_%d_%d_delay :: DelayShaper(%s);\n" % (e1, e0, delay))
-        fh.write("link_%d_%d_bw :: BandwidthShaper(%s);\n" % (e1, e0, bw))
+        fh.write("link_%d_%d_bw :: LinkUnqueue(%s, %s);\n" % (e1, e0, delay, bw))
         fh.write("link_%d_%d_loss :: RandomSample(DROP %s);\n" % (e1, e0, drop))
-        fh.write("link_%d_%d_puller :: BandwidthRatedUnqueue(1Gbps);\n" % (e0, e1))
-        fh.write("link_%d_%d_puller :: BandwidthRatedUnqueue(1Gbps);\n" % (e1, e0))
 
-        for element in pull_elements[edge]:
-            tokens = element.split('(')
-            fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, tokens[0], element))
-            fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, tokens[0], element))
-
-        for element in push_elements[edge]:
-            tokens = element.split('(')
-            fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, tokens[0], element))
-            fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, tokens[0], element))
+        if edge in pull_elements:
+            for element in pull_elements[edge]:
+                tokens = element.split('(')
+                fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, tokens[0], element))
+                fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, tokens[0], element))
+            
+        if edge in push_elements:    
+            for element in push_elements[edge]:
+                tokens = element.split('(')
+                fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, tokens[0], element))
+                fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, tokens[0], element))
 
                  
 def writeTTLDec(fh, edges):
@@ -221,10 +196,12 @@ def writeRouters(fh, g):
         fh.write(middle_str)
         fh.write(last_str)
 
-def writeLinks(fh, g):
+def writeLinks(fh, g, args):
     fh.write("\n// Links\n")
     nodes = nx.nodes(g)
     nodes.sort()
+
+    useCodel = args.useCodel
     
     for n in nodes:
         if re.match("e[0-9]+", n):
@@ -234,12 +211,16 @@ def writeLinks(fh, g):
             if re.match("e[0-9]+", ne):
                 continue
 
-            pull_elements = g[n][ne]['u_elements']
-            push_elements = g[n][ne]['p_elements']
+            pull_elements = g[n][ne]['s_elements']
+            push_elements = g[n][ne]['l_elements']
 
             push_str = "->"
             pull_str = "->"
 
+            codel = "->"
+            if useCodel:
+                codel = "-> CoDel() ->"
+                
             for element in pull_elements:
                 tokens = element.split("(")
                 pull_str = "%s link_%s_%s_%s ->" % (pull_str, n, ne, tokens[0])
@@ -248,9 +229,8 @@ def writeLinks(fh, g):
                 tokens = element.split("(")
                 push_str = "%s link_%s_%s_%s ->" % (push_str, n, ne, tokens[0])
             
-            fh.write("router%s[%d] -> r%sttl_%s -> link_%s_%s_queue -> link_%s_%s_loss %s link_%s_%s_delay -> link_%s_%s_bw -> link_%s_%s_puller %s router%s\n"
-                     % (n, neighbors.index(ne), n, ne, n, ne, n, ne, pull_str,
-                        n, ne, n, ne, n, ne, push_str, ne))
+            fh.write("router%s[%d] -> r%sttl_%s %s SetTimestamp(FIRST true) -> link_%s_%s_queue %s link_%s_%s_loss %s link_%s_%s_bw -> router%s\n"
+                     % (n, neighbors.index(ne), n, ne, push_str, n, ne, codel, n, ne, pull_str, n, ne, ne))
         
 
 def writeLocalDelivery(fh, g, routers, in_routers, arpLess):

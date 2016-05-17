@@ -12,16 +12,16 @@ class GraphGen():
 
     def readGraph(self, filename):
         self.g = nx.read_edgelist(filename)
-        p_elements = nx.get_edge_attributes(self.g, 'p_elements')
-        u_elements = nx.get_edge_attributes(self.g, 'u_elements')
+        push_elements = nx.get_edge_attributes(self.g, 's_elements')
+        pull_elements = nx.get_edge_attributes(self.g, 'l_elements')
         for edge in nx.edges(self.g):
-            if edge not in p_elements:
-                p_elements[edge] = []
-            if edge not in u_elements:
-                u_elements[edge] = []
+            if edge not in push_elements:
+                push_elements[edge] = []
+            if edge not in pull_elements:
+                pull_elements[edge] = []
             
-        nx.set_edge_attributes(self.g, 'p_elements', p_elements)
-        nx.set_edge_attributes(self.g, 'u_elements', u_elements)
+        nx.set_edge_attributes(self.g, 's_elements', push_elements)
+        nx.set_edge_attributes(self.g, 'l_elements', pull_elements)
 
                 
     def drawGraph(self, filename="graph.png"):
@@ -85,6 +85,7 @@ def main():
     parser.add_argument('--bandwidth', dest='bw', default='1Gbps', help='Default Bandwidth for each link (1Gbps)')
     parser.add_argument('--delay', dest='delay', default='0ms', help='Default Delay for each link (0ms)')
     parser.add_argument('--loss', dest='loss', default='0.0', help='Default Loss rate for each link (0.0)')
+    parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
     args = parser.parse_args()
 
     gen = GraphGen()
