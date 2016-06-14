@@ -83,7 +83,7 @@ def main():
     parser.add_argument('-d', dest='draw_output', help='Draw the given input file and store in the given destination')
     parser.add_argument('-n', dest='ns_file', help='Write an ns file as well')
     parser.add_argument('-o', dest='output', default='vrouter.template', help='Specify output for click template (default: vrouter.template)')
-    parser.add_argument('-a', dest='arp', help='Configure click to use ARP')
+    parser.add_argument('-a', dest='arp', default=False, action='store_const', const=True, help='Configure click to use ARP')
     parser.add_argument('--bandwidth', dest='bw', default='1Gbps', help='Default Bandwidth for each link (1Gbps)')
     parser.add_argument('--delay', dest='delay', default='0ms', help='Default Delay for each link (0ms)')
     parser.add_argument('--loss', dest='loss', default='0.0', help='Default Loss rate for each link (0.0)')

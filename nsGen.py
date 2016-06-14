@@ -30,8 +30,8 @@ def writeEnclaveNodes(numEnclaves, os, fh):
         fh.write("\n# Enclave %d\n" % enc)
         lstr = "server%d ct%d" % (enc, enc)
         for x in range(8):
-            fh.write("set traf%d_%d [$ns node]\n" % (enc, x + 1))
-            lstr = "%s traf%d_%d" % (lstr, enc, x + 1)
+            fh.write("set traf%d-%d [$ns node]\n" % (enc, x + 1))
+            lstr = "%s traf%d-%d" % (lstr, enc, x + 1)
         fh.write("set server%d [$ns node]\n" % enc)
         fh.write("set ct%d [$ns node]\n" % enc)
         fh.write("tb-set-node-os $ct%d %s\n" % (enc, os))
@@ -68,7 +68,7 @@ def writeIPs(numEnclaves, fh):
         addr = 1
         fh.write("\n# IPs for Enclave %d\n" % enc)
         for x in range(8):
-            fh.write("tb-set-ip-lan $traf%d_%d $lan%d 10.%d.1.%d\n"
+            fh.write("tb-set-ip-lan $traf%d-%d $lan%d 10.%d.1.%d\n"
                      % (enc, x + 1, enc, enc, addr))
             addr = addr + 1
         fh.write("tb-set-ip-lan $server%d $lan%d 10.%d.1.%d\n"
@@ -94,7 +94,7 @@ def writeContainers(numEnclaves, fh):
     for n in range(numEnclaves):
         enc = n + 1
         for x in range(8):
-            fh.write("tb-add-node-attribute $traf%d_%d containers:partition %d\n"
+            fh.write("tb-add-node-attribute $traf%d-%d containers:partition %d\n"
                      % (enc, x + 1, n))
         fh.write("tb-add-node-attribute $server%d containers:partition %d\n"
                  % (enc, n))
@@ -131,7 +131,7 @@ def writeStartCmds(numEnclaves, fh):
         enc = n + 1
         fh.write("\n")
         for x in range(8):
-            fh.write("tb-set-node-startcmd $traf%d_%d \"$magi_str\"\n" %
+            fh.write("tb-set-node-startcmd $traf%d-%d \"$magi_str\"\n" %
                      (enc, x + 1))
         fh.write("tb-set-node-startcmd $server%d \"$magi_str\"\n"
                  % (enc))
