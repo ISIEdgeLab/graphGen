@@ -95,10 +95,10 @@ def writeRoutersToInterfaces(fh, g, routers, arpLess):
             if re.match("e[0-9]+", neigh):
                 if not arpLess:
                     fh.write("router%d[%d] -> r%dttl_out -> [0]arpq%d;\n"
-                             % (routers[i], neighs.index(neigh), i + 1, i + 1))
+                             % (routers[i], neighs.index(neigh), routers[i], i + 1))
                 else:
                     fh.write("router%d[%d] -> r%dttl_out -> al%d -> out%d;\n"
-                             % (routers[i], neighs.index(neigh), i + 1, i + 1, i + 1))
+                             % (routers[i], neighs.index(neigh), routers[i], i + 1, i + 1))
 
 def writeLinkShaping(fh, g, args):
     fh.write("\n// Link Traffic Shaping\n")
