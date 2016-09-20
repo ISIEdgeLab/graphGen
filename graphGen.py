@@ -87,7 +87,11 @@ def main():
     parser.add_argument('--bandwidth', dest='bw', default='1Gbps', help='Default Bandwidth for each link (1Gbps)')
     parser.add_argument('--delay', dest='delay', default='0ms', help='Default Delay for each link (0ms)')
     parser.add_argument('--loss', dest='loss', default='0.0', help='Default Loss rate for each link (0.0)')
+    parser.add_argument('--set-startcmd', dest='startCmd', default="", help='Set a default start command to run on all nodes')
     parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
+    parser.add_argument('--disable-containers', dest='useContainers', default=True, help='Disable Containerization', action='store_const', const=False)
+    parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
+    parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
     parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)', action='store_const', const=True)
     args = parser.parse_args()
 
@@ -101,8 +105,7 @@ def main():
         gen.drawGraph(args.draw_output)
     gen.writeClick(args)
     if args.ns_file != None:
-        arg2 = {'os': "Ubuntu1404-64-STD"}
-        gen.writeNS(args.ns_file, arg2)
+        gen.writeNS(args.ns_file, args)
 
 if __name__ == "__main__":
     main()
