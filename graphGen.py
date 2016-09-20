@@ -2,7 +2,7 @@
 
 import networkx as nx
 import matplotlib.pyplot as plt
-import re
+import re, csv
 import clickGen as cg
 import nsGen as ng
 import argparse
@@ -49,6 +49,22 @@ class GraphGen():
             if not re.match("e[0-9]+", node):
                 ips[node] = "10.100.150.%s" % node
         nx.set_node_attributes(self.g, 'ips', ips)
+
+
+    def readRoutes(self, filename):
+        fh = open(filename, "r")
+        input_rts = csv.reader(fh, delimiter=" ")
+        routes = nx.get_node_attributes(self.g, 'routes')
+
+        for route in input_rts:
+            target = route[0]
+            iface = 'if%s' % re.search("[0-9]+", target).group(0)
+            for x in range(1, len(route) - 1):
+                router = route[x]
+                next_hop = route[x + 1]
+                routes[router]['ifaces'][iface] = next_hop
+                    
+        
         
     def distributeIFs(self):
         routes = {}
@@ -84,6 +100,7 @@ def main():
     parser.add_argument('-n', dest='ns_file', help='Write an ns file as well')
     parser.add_argument('-o', dest='output', default='vrouter.template', help='Specify output for click template (default: vrouter.template)')
     parser.add_argument('-a', dest='arp', default=False, action='store_const', const=True, help='Configure click to use ARP')
+    parser.add_argument('-r', dest='routes', type=str, help='Specify input routes in the given JSON file')
     parser.add_argument('--bandwidth', dest='bw', default='1Gbps', help='Default Bandwidth for each link (1Gbps)')
     parser.add_argument('--delay', dest='delay', default='0ms', help='Default Delay for each link (0ms)')
     parser.add_argument('--loss', dest='loss', default='0.0', help='Default Loss rate for each link (0.0)')
@@ -100,6 +117,9 @@ def main():
     gen.generateIFs()
     gen.generateIPs()
     gen.distributeIFs()
+    if args.routes != None:
+        gen.readRoutes(args.routes)
+        
     gen.distributeIPs()
     if args.draw_output != None:
         gen.drawGraph(args.draw_output)
