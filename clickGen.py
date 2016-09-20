@@ -16,15 +16,19 @@ def writeClick(g, args):
     in_routers.sort()
 
     arpLess = True
-    if args.arp:
+
+    # DPDK must use ARP
+    if args.arp or args.useDPDK:
         arpLess = False
         
     fh = open(filename, "w")
 
     writeRouters(fh, g)
     writeClassifiers(fh, numInputs)
-    writePacketArrival(fh, numInputs)
-    writePacketDeparture(fh, numInputs)
+    if args.useDPDK:
+        writeVLANMultiplexing(fh, numInputs)
+    writePacketArrival(fh, numInputs, args.useDPDK)
+    writePacketDeparture(fh, numInputs, args.useDPDK)
     if arpLess:
         writeARPLess(fh, numInputs)
     if not arpLess:
@@ -44,17 +48,40 @@ def writeClassifiers(fh, numInput):
                  % (i + 1))
     fh.write("chost :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);\n")
 
-def writePacketArrival(fh, numInput):
+def writeVLANMultiplexing(fh, numInputs):
+    fh.write("\n// VLAN Multiplexing\n")
+    vlanstr = ""
+    for i in range(numInputs):
+        vlanstr = "%s, VLAN $vlan%d" % (vlanstr, i + 1)
+    fh.write("vlanmux :: VlanSwitch(%s);\n" % vlanstr)
+    
+def writePacketArrival(fh, numInput, useDPDK):
     fh.write("\n// Packet Arrival\n")
-    for i in range(numInput):
-        fh.write("FromDevice(${if%d}) -> c%d;\n" % (i + 1, i + 1))
-    fh.write("FromHost(fake0) -> chost;\n")
+    if useDPDK:
+        fh.write("FromDPDKDevice(0) -> VLANDecap() -> vlanmux;\n")
+        fh.write("FromDPDKDevice(1) -> VLANDecap() -> vlanmux;\n")
 
-def writePacketDeparture(fh, numInput):
+        for i in range(numInput):
+            fh.write("vlanmux[%d] -> c%d;\n" % (i, i + 1))
+
+    else:
+        for i in range(numInput):
+            fh.write("FromDevice(${if%d}) -> c%d;\n" % (i + 1, i + 1))
+        fh.write("FromHost(fake0) -> chost;\n")
+
+def writePacketDeparture(fh, numInput, useDPDK):
     fh.write("\n// Packet Departure\n")
-    for i in range(numInput):
-        fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${if%d}, BURST 64);\n"
-                 % (i + 1, i + 1))
+    if useDPDK:
+        fh.write("outDPDK0 :: VLANEncap(ANNO) -> ToDPDKDevice(0);\n")
+        fh.write("outDPDK1 :: VLANEncap(ANNO) -> ToDPDKDevice(1);\n")
+        for i in range(numInput):
+            fh.write("out%d :: SetVLANAnno($vlan%d) -> ;\n"
+                     % (i + 1, i + 1))
+        
+    else:
+        for i in range(numInput):
+            fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${if%d}, BURST 64);\n"
+                     % (i + 1, i + 1))
         
             
 def writeARPHandler(fh, numInput):
@@ -106,6 +133,7 @@ def writeLinkShaping(fh, g, args):
     bws = nx.get_edge_attributes(g, 'bw')
     delays = nx.get_edge_attributes(g, 'delay')
     drops = nx.get_edge_attributes(g, 'drop')
+    losses = nx.get_edge_attributes(g, 'loss')
     pull_elements = nx.get_edge_attributes(g, 'u_elements')
     push_elements = nx.get_edge_attributes(g, 'p_elements')
     for edge in edges:
@@ -121,7 +149,9 @@ def writeLinkShaping(fh, g, args):
         if edge in delays:
             delay = delays[edge]
         if edge in drops:
-            drop = delays[drop]
+            drop = drops[edge]
+        elif edge in losses:
+            drop = losses[edge]
 
         qs = 1000
                     

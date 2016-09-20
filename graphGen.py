@@ -88,6 +88,7 @@ def main():
     parser.add_argument('--delay', dest='delay', default='0ms', help='Default Delay for each link (0ms)')
     parser.add_argument('--loss', dest='loss', default='0.0', help='Default Loss rate for each link (0.0)')
     parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
+    parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)', action='store_const', const=True)
     args = parser.parse_args()
 
     gen = GraphGen()
