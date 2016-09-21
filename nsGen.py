@@ -161,23 +161,23 @@ def writeStartCmds(numEnclaves, fh, numServers, numClients):
         enc = n + 1
         fh.write("\n")
         for x in range(numClients):
-            fh.write("tb-set-node-startcmd $traf%d%d \"$magi_str; $my_start\"\n" %
+            fh.write("tb-set-node-startcmd $traf%d%d \"$my_start; $magi_str\"\n" %
                      (enc, x + 1))
         if numServers == 1:
-            fh.write("tb-set-node-startcmd $server%d \"$magi_str; $my_start\"\n"
+            fh.write("tb-set-node-startcmd $server%d \"$my_start; $magi_str\"\n"
                      % (enc))
         else:
             for x in range(numServers):
-                fh.write("tb-set-node-startcmd $server%d%d \"$magi_str; $my_start\"\n"
+                fh.write("tb-set-node-startcmd $server%d%d \"$my_start; $magi_str\"\n"
                          % (enc, x + 1))
-        fh.write("tb-set-node-startcmd $ct%d \"$magi_str; $my_start\"\n"
+        fh.write("tb-set-node-startcmd $ct%d \"$my_start; $magi_str\"\n"
                  % (enc))
-        fh.write("tb-set-node-startcmd $crypto%d \"$magi_str; $my_start\"\n"
+        fh.write("tb-set-node-startcmd $crypto%d \"$my_start; $magi_str\"\n"
                  % (enc))
                 
     
-    fh.write("\ntb-set-node-startcmd $vrouter \"$click_str; $magi_str; $my_start\"\n")
-    fh.write("tb-set-node-startcmd $control \"sudo python /proj/edgect/exp_scripts/fixHosts.py; $magi_str; $my_start\"\n")
+    fh.write("\ntb-set-node-startcmd $vrouter \"$click_str; $my_start; $magi_str\"\n")
+    fh.write("tb-set-node-startcmd $control \"sudo python /proj/edgect/exp_scripts/fixHosts.py; $my_start; $magi_str\"\n")
 
 def writeEpilogue(fh):
     fh.write("\n# Epilogue\n")
