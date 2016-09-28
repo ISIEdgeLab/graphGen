@@ -5,11 +5,12 @@ def writeClick(g, args):
     filename = args.output
     
     numInputs = len(nx.get_node_attributes(g, 'ifs'))
+    numOthers = len(nx.get_node_attributes(g, 'others'))
     in_routers = []
     for node,ifs in nx.get_node_attributes(g, 'ifs').iteritems():
         edges = nx.edges(g, node)
         for edge in edges:
-            if re.match("e[0-9]+", edge[0]):
+            if re.match("e[0-9]+", edge[0]) or re.match("o[0-9]+", edge[0]):
                 in_routers.append(int(edge[1]))
             else:
                 in_routers.append(int(edge[0]))
@@ -27,15 +28,16 @@ def writeClick(g, args):
     writeClassifiers(fh, numInputs)
     if args.useDPDK:
         writeVLANMultiplexing(fh, numInputs)
-    writePacketArrival(fh, numInputs, args.useDPDK)
-    writePacketDeparture(fh, numInputs, args.useDPDK)
+    writePacketArrival(fh, numInputs, numOthers, args.useDPDK)
+    writePacketDeparture(fh, numInputs, numOthers, args.useDPDK)
     if arpLess:
-        writeARPLess(fh, numInputs)
+        writeARPLess(fh, numInputs, numOthers)
     if not arpLess:
         writeARPHandler(fh, numInputs)
     writeLinkShaping(fh, g, args)
     writeTTLDec(fh, nx.edges(g))
     writeLinks(fh, g, args)
+    writeTeedLinks(fh, g, numInputs, numOthers)
     writeDropPacketsOnRouters(fh, numInputs, in_routers)
     writeRoutersToInterfaces(fh, g, in_routers, arpLess)
     writeLocalDelivery(fh, g, nx.nodes(g), in_routers, arpLess)
@@ -55,7 +57,7 @@ def writeVLANMultiplexing(fh, numInputs):
         vlanstr = "%s, VLAN $vlan%d" % (vlanstr, i + 1)
     fh.write("vlanmux :: VlanSwitch(%s);\n" % vlanstr)
     
-def writePacketArrival(fh, numInput, useDPDK):
+def writePacketArrival(fh, numInput, numOthers, useDPDK):
     fh.write("\n// Packet Arrival\n")
     if useDPDK:
         fh.write("FromDPDKDevice(0) -> VLANDecap() -> vlanmux;\n")
@@ -65,11 +67,17 @@ def writePacketArrival(fh, numInput, useDPDK):
             fh.write("vlanmux[%d] -> c%d;\n" % (i, i + 1))
 
     else:
-        for i in range(numInput):
+        c = 1
+        for i in range(numInput - numOthers):
             fh.write("FromDevice(${if%d}) -> c%d;\n" % (i + 1, i + 1))
+            c = c + 1
+        for i in range(numOthers):
+            fh.write("FromDevice(${ifo%d}) -> c%d;\n" % (i + 1, c))
+            c = c + 1
+                     
         fh.write("FromHost(fake0) -> chost;\n")
 
-def writePacketDeparture(fh, numInput, useDPDK):
+def writePacketDeparture(fh, numInput, numOthers, useDPDK):
     fh.write("\n// Packet Departure\n")
     if useDPDK:
         fh.write("outDPDK0 :: VLANEncap(ANNO) -> ToDPDKDevice(0);\n")
@@ -79,9 +87,15 @@ def writePacketDeparture(fh, numInput, useDPDK):
                      % (i + 1, i + 1))
         
     else:
-        for i in range(numInput):
+        c = 1
+        for i in range(numInput - numOthers):
             fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${if%d}, BURST 64);\n"
                      % (i + 1, i + 1))
+            c = c + 1
+        for i in range(numOthers):
+            fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${ifo%d}, BURST 64);\n"
+                     % (c, i + 1))
+            c = c + 1
         
             
 def writeARPHandler(fh, numInput):
@@ -99,12 +113,19 @@ def writeARPHandler(fh, numInput):
     fh.write("chost[1] -> c1;\n")
     fh.write("chost[2] -> arpt;\n")
 
-def writeARPLess(fh, numInput):
+def writeARPLess(fh, numInput, numOthers):
     fh.write("\n// Handle ARPless\n")
-    for i in range(numInput):
+    x = 1
+    for i in range(numInput - numOthers):
         c = i + 1
         fh.write("al%d :: EtherEncap(0x0800, ${if%d}:eth, ${if%d_friend})\n" %
                  (c, c, c))
+        x = x + 1
+    for i in range(numOthers):
+        c = i + 1
+        fh.write("al%d :: EtherEncap(0x0800, ${ifo%d}:eth, ${ifo%d_friend})\n" %
+                 (x, c, c))
+        x = x + 1
 
 def writeDropPacketsOnRouters(fh, numInput, routers):
     fh.write("\n// Send IP Packets to Routers\n")
@@ -119,17 +140,18 @@ def writeRoutersToInterfaces(fh, g, routers, arpLess):
     for i in range(numInputs):
         neighs = list(nx.all_neighbors(g, str(routers[i])))
         for neigh in neighs:
-            if re.match("e[0-9]+", neigh):
+            if re.match("[oe][0-9]+", neigh):
                 if not arpLess:
-                    fh.write("router%d[%d] -> r%dttl_out -> [0]arpq%d;\n"
-                             % (routers[i], neighs.index(neigh), routers[i], i + 1))
+                    fh.write("router%d[%d] -> r%dttl_out_%s -> [0]arpq%d;\n"
+                             % (routers[i], neighs.index(neigh), routers[i], neigh, i + 1))
                 else:
-                    fh.write("router%d[%d] -> r%dttl_out -> al%d -> out%d;\n"
-                             % (routers[i], neighs.index(neigh), routers[i], i + 1, i + 1))
+                    fh.write("router%d[%d] -> r%dttl_out_%s -> al%d -> out%d;\n"
+                             % (routers[i], neighs.index(neigh), routers[i], neigh, i + 1, i + 1))
 
 def writeLinkShaping(fh, g, args):
     fh.write("\n// Link Traffic Shaping\n")
     edges = nx.edges(g)
+    tees = nx.get_edge_attributes(g, 'tee')
     bws = nx.get_edge_attributes(g, 'bw')
     delays = nx.get_edge_attributes(g, 'delay')
     drops = nx.get_edge_attributes(g, 'drop')
@@ -137,7 +159,7 @@ def writeLinkShaping(fh, g, args):
     pull_elements = nx.get_edge_attributes(g, 'u_elements')
     push_elements = nx.get_edge_attributes(g, 'p_elements')
     for edge in edges:
-        if re.match("e[0-9]+", edge[0]) or re.match("e[0-9]+", edge[1]):
+        if re.match("[oe][0-9]+", edge[0]) or re.match("[oe][0-9]+", edge[1]):
             continue
         e0 = int(edge[0])
         e1 = int(edge[1])
@@ -174,17 +196,23 @@ def writeLinkShaping(fh, g, args):
                 fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, tokens[0], element))
                 fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, tokens[0], element))
 
+        if edge in tees:
+            fh.write("link_%d_%d_tee :: Tee(2);\n" % (e0, e1))
+            fh.write("link_%d_%d_tee :: Tee(2);\n" % (e1, e0))
+
                  
 def writeTTLDec(fh, edges):
     fh.write("\n// Decrement TTL and send time exceeded replies\n")
     for edge in edges:
-        if re.match("e[0-9]+", edge[0]) or re.match("e[0-9]+", edge[1]):
-            if re.match("e[0-9]+", edge[0]):
+        if re.match("[oe][0-9]+", edge[0]) or re.match("[oe][0-9]+", edge[1]):
+            if re.match("[oe][0-9]+", edge[0]):
+                out = edge[0]
                 edge = int(edge[1])
             else:
+                out = edge[1]
                 edge = int(edge[0])
-            fh.write("r%dttl_out :: DecIPTTL;\n" % edge)
-            fh.write("r%dttl_out[1] -> ICMPError(10.100.150.%d, timeexceeded) -> router%d;\n" % (edge, edge, edge))
+            fh.write("r%dttl_out_%s :: DecIPTTL;\n" % (edge, out))
+            fh.write("r%dttl_out_%s[1] -> ICMPError(10.100.150.%d, timeexceeded) -> router%d;\n" % (edge, out, edge, edge))
         else:
             e0 = int(edge[0])
             e1 = int(edge[1])
@@ -201,7 +229,7 @@ def writeRouters(fh, g):
     nodes = nx.nodes(g)
     nodes.sort()
     for node in nodes:
-        if re.match("e[0-9]+", node):
+        if re.match("[oe][0-9]+", node):
             continue
         ifaces = routes[node]['ifaces']
         ips = routes[node]['ips']
@@ -210,7 +238,7 @@ def writeRouters(fh, g):
         last_str = ""
         middle_str = ""
         for iface,nhop in ifaces.iteritems():
-            if re.match("e[0-9]+", nhop):
+            if re.match("[oe][0-9]+", nhop):
                 last_str = "%s,\n                         ${%s_16} ${%s_gw} %d" % (last_str, iface, iface, neighbors.index(nhop))
                 middle_str = "${%s}:ip %d" % (iface, len(neighbors))
                 
@@ -234,11 +262,11 @@ def writeLinks(fh, g, args):
     useCodel = args.useCodel
     
     for n in nodes:
-        if re.match("e[0-9]+", n):
+        if re.match("[oe][0-9]+", n):
             continue
         neighbors = list(nx.all_neighbors(g, n))
         for ne in neighbors:
-            if re.match("e[0-9]+", ne):
+            if re.match("[oe][0-9]+", ne):
                 continue
 
             pull_elements = g[n][ne]['s_elements']
@@ -246,6 +274,7 @@ def writeLinks(fh, g, args):
 
             push_str = "->"
             pull_str = "->"
+            tee_str = "->"
 
             codel = "->"
             if useCodel:
@@ -258,17 +287,49 @@ def writeLinks(fh, g, args):
             for element in push_elements:
                 tokens = element.split("(")
                 push_str = "%s link_%s_%s_%s ->" % (push_str, n, ne, tokens[0])
-            
-            fh.write("router%s[%d] -> r%sttl_%s %s SetTimestamp(FIRST true) -> link_%s_%s_queue %s link_%s_%s_loss %s link_%s_%s_bw -> router%s\n"
-                     % (n, neighbors.index(ne), n, ne, push_str, n, ne, codel, n, ne, pull_str, n, ne, ne))
+
+            if 'tee' in g[n][ne]:
+                tee_str = "-> link_%s_%s_tee ->" % (n, ne)
+                
+            fh.write("router%s[%d] -> r%sttl_%s %s SetTimestamp(FIRST true) -> link_%s_%s_queue %s link_%s_%s_loss %s link_%s_%s_bw %s router%s\n"
+                     % (n, neighbors.index(ne), n, ne, push_str, n, ne, codel, n, ne, pull_str, n, ne, tee_str, ne))
         
 
+def writeTeedLinks(fh, g, numInputs, numOthers):
+    tees = nx.get_edge_attributes(g, 'tee')
+    fh.write("\n // Teed Inputs and Outputs\n")
+    fh.write("\n // Input from Teed interfaces is discarded\n")
+    c = numOthers + 1
+    for edge in tees:
+        fh.write("FromDevice(${ifo%d}) -> Discard;\n" % (c))
+        c = c + 1
+
+    fh.write("\n// Output Chains\n")
+    c = numOthers + 1
+    k = numInputs + 1
+    
+    for edge in tees:
+        fh.write("link_%s_%s_tee[1] -> al%d :: EtherEncap(0x0800, ${ifo%d}:eth, ${ifo%d_friend})\n" % (edge[0], edge[1], k, c, c))
+        fh.write("link_%s_%s_tee[1] -> al%d;\n" % (edge[1], edge[0], k))
+        c = c + 1
+
+    k = numInputs + 1
+    c = numOthers + 1
+
+    for edge in tees:
+        fh.write("al%d -> ThreadSafeQueue() -> ToDevice(${ifo%d});\n" %
+                 (k, c))
+        k = k + 1
+        c = c + 1
+
+        
+        
 def writeLocalDelivery(fh, g, routers, in_routers, arpLess):
     fh.write("\n// Local Delivery\n")
     fh.write("toh :: ToHost;\n\n")
 
     for router in routers:
-        if not re.match("e[0-9]+", router):
+        if not re.match("[oe][0-9]+", router):
             neighbors = list(nx.all_neighbors(g, str(router)))
             fh.write("router%s[%d] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;\n"
                      % (router, len(neighbors)))

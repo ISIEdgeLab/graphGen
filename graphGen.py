@@ -1,4 +1,4 @@
-#!/bin/python
+#! /usr/bin/env python
 
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -21,7 +21,10 @@ class GraphGen():
                 push_elements[edge] = []
             if edge not in pull_elements:
                 pull_elements[edge] = []
-            
+                
+        for node in nx.nodes(self.g):
+            if re.match("o[0-9]+",  node):
+                self.g.node[node]['external'] = True
         nx.set_edge_attributes(self.g, 's_elements', push_elements)
         nx.set_edge_attributes(self.g, 'l_elements', pull_elements)
 
@@ -36,17 +39,21 @@ class GraphGen():
 
     def generateIFs(self):
         ifs = {}
-        
+        others = {}
         for node in nx.nodes(self.g):
             if re.match("e[0-9]+", node):
                 ifs[node] = 'if%s' % re.search("[0-9]+", node).group(0)
+            if re.match("o[0-9]+", node):
+                ifs[node] = 'if%s' % node
+                others[node] = 1
 
+        nx.set_node_attributes(self.g, 'others', others)
         nx.set_node_attributes(self.g, 'ifs', ifs)
 
     def generateIPs(self):
         ips = {}
         for node in nx.nodes(self.g):
-            if not re.match("e[0-9]+", node):
+            if not (re.match("e[0-9]+", node) or re.match("o[0-9]+", node)):
                 ips[node] = "10.100.150.%s" % node
         nx.set_node_attributes(self.g, 'ips', ips)
 
