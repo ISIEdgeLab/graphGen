@@ -61,7 +61,7 @@ def writeEnclaveNodes(numEnclaves, os, numServers, numClients, fh):
         enc = n + 1
         fh.write("\n# Enclave %d\n" % enc)
         lstr = ""
-
+        
         # Legacy BLAH.  If number of servers per enclave is 1, don_t add a server number
         if numServers == 1:
             lstr = "server%d ct%d" % (enc, enc)
@@ -82,6 +82,7 @@ def writeEnclaveNodes(numEnclaves, os, numServers, numClients, fh):
         # Write CT and Crypto nodes
         fh.write("set ct%d [$ns node]\n" % enc)
         fh.write("tb-set-node-os $ct%d %s\n" % (enc, os))
+        
         fh.write("set crypto%d [$ns node]\n" % enc)
         fh.write("tb-set-node-os $crypto%d %s\n" % (enc, os))
         lan_strs.append(lstr)
@@ -181,8 +182,9 @@ def writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, f
 
     # All clients and servers in an enclave are placed in the same partition
     # Make this an option?
-    
+ 
     count = 0
+
     for n in range(numEnclaves):
         enc = n + 1
         for x in range(numClients):
@@ -204,9 +206,11 @@ def writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, f
     fh.write("\n")
     for n in range(numEnclaves):
         enc = n + 1
+        
         fh.write("tb-add-node-attribute $ct%d containers:partition %d\n"
                  % (enc, count))
         count = count + 1
+        
         fh.write("tb-add-node-attribute $crypto%d containers:partition %d\n"
                  % (enc, count))
         count = count + 1

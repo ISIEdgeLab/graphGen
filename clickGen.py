@@ -156,8 +156,8 @@ def writeLinkShaping(fh, g, args):
     delays = nx.get_edge_attributes(g, 'delay')
     drops = nx.get_edge_attributes(g, 'drop')
     losses = nx.get_edge_attributes(g, 'loss')
-    pull_elements = nx.get_edge_attributes(g, 'u_elements')
-    push_elements = nx.get_edge_attributes(g, 'p_elements')
+    pull_elements = nx.get_edge_attributes(g, 'l_elements')
+    push_elements = nx.get_edge_attributes(g, 's_elements')
     for edge in edges:
         if re.match("[oe][0-9]+", edge[0]) or re.match("[oe][0-9]+", edge[1]):
             continue
