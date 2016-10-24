@@ -31,9 +31,9 @@ class GraphGen():
                 
     def drawGraph(self, filename="graph.png"):
         pos = nx.spring_layout(self.g)
-        nx.draw_networkx_nodes(self.g, pos)
-        nx.draw_networkx_edges(self.g, pos)
-        nx.draw_networkx_labels(self.g, pos, font_size=10)
+        #nx.draw_networkx_nodes(self.g, pos)
+        #nx.draw_networkx_edges(self.g, pos)
+        nx.draw_networkx(self.g, pos, font_size=10, node_color='k', font_color='w')
         plt.axis('off')
         plt.savefig(filename)
 
@@ -117,6 +117,7 @@ def main():
     parser.add_argument('--set-startcmd', dest='startCmd', default="", help='Set a default start command to run on all nodes')
     parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
     parser.add_argument('--disable-containers', dest='useContainers', default=True, help='Disable Containerization', action='store_const', const=False)
+    parser.add_argument('--disable-crypto-nodes', dest='useCrypto', default=True, help='Do not add any crypto nodes to enclaves', action='store_const', const=False)
     parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
     parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
     parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP) CURRENTLY UNAVAILABLE', action='store_const', const=True)

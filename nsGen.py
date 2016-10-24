@@ -19,18 +19,19 @@ def writeNS(g, filename, args):
     # need to subtract out external nodes
     numEnclaves = len(nx.get_node_attributes(g, 'ifs')) - numExternal
     numTees = len(nx.get_edge_attributes(g, 'tee'))
-
+    useCrypto = args.useCrypto
+    
     writePreamble(fh, filename, args.startCmd)
-    lans = writeEnclaveNodes(numEnclaves, "Ubuntu1404-64-STD", numServers, numClients, fh)
+    lans = writeEnclaveNodes(numEnclaves, "Ubuntu1404-64-STD", numServers, numClients, useCrypto, fh)
     writeExternalNodes(numExternal, "Ubuntu1404-64-STD", fh)
-    writeLansLinks(lans, numExternal, fh)
-    writeIPs(numEnclaves, numExternal, numServers, numClients, fh)
+    writeLansLinks(lans, numExternal, useCrypto, fh)
+    writeIPs(numEnclaves, numExternal, numServers, numClients, useCrypto, fh)
     writeTeeNodes(g, "Ubuntu1404-64-STD", fh)
     
     if args.useContainers:
-        writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, fh)
+        writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, useCrypto, fh)
 
-    writeStartCmds(numEnclaves, numExternal, numServers, numClients, fh)
+    writeStartCmds(numEnclaves, numExternal, numServers, numClients, useCrypto, fh)
     writeEpilogue(fh)
     fh.close()
 
@@ -50,7 +51,7 @@ def writePreamble(fh, filename, start_cmd):
     else:
         fh.write("\nset my_start \"%s\"\n" % start_cmd)
         
-def writeEnclaveNodes(numEnclaves, os, numServers, numClients, fh):
+def writeEnclaveNodes(numEnclaves, os, numServers, numClients, useCrypto, fh):
     ''' Write the enclave nodes, providing the specified os, number of server 
     and number of clients per enclave '''
 
@@ -82,9 +83,10 @@ def writeEnclaveNodes(numEnclaves, os, numServers, numClients, fh):
         # Write CT and Crypto nodes
         fh.write("set ct%d [$ns node]\n" % enc)
         fh.write("tb-set-node-os $ct%d %s\n" % (enc, os))
-        
-        fh.write("set crypto%d [$ns node]\n" % enc)
-        fh.write("tb-set-node-os $crypto%d %s\n" % (enc, os))
+
+        if useCrypto:
+            fh.write("set crypto%d [$ns node]\n" % enc)
+            fh.write("tb-set-node-os $crypto%d %s\n" % (enc, os))
         lan_strs.append(lstr)
 
     # Write the control node and vrouter node
@@ -102,7 +104,7 @@ def writeExternalNodes(numExternal, os, fh):
         fh.write("set ext%d [$ns node]\n" % (x + 1))
         fh.write("tb-set-node-os ext%d %s\n" % (x + 1, os))
 
-def writeLansLinks(lans, numExternal, fh):
+def writeLansLinks(lans, numExternal, useCrpyto, fh):
     c = 1
     fh.write("\n# Lans\n")
     link_str = ""
@@ -111,8 +113,12 @@ def writeLansLinks(lans, numExternal, fh):
     # Write the LANs for each enclave, as well as the ct-crypto link and crpyto-vrouter links
     for lan in lans:
         fh.write("set lan%d [$ns make-lan \"%s\" 1000Mb 0ms]\n" % (c, lan))
-        link_str = "%sset link%d [$ns duplex-link $ct%d $crypto%d 1000Mb 0.0ms DropTail]\n" % (link_str, c, c, c)
-        elink_str = "%sset elink%d [$ns duplex-link $crypto%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, c)
+        if useCrpyto:
+            link_str = "%sset link%d [$ns duplex-link $ct%d $crypto%d 1000Mb 0.0ms DropTail]\n" % (link_str, c, c, c)
+            elink_str = "%sset elink%d [$ns duplex-link $crypto%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, c)
+        else:
+            elink_str = "%sset elink%d [$ns duplex-link $ct%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, c)
+
         c = c + 1
 
     # I (ek) try to bunch everything in the output file together for easy reading.  Thats why all the link_strs
@@ -127,7 +133,7 @@ def writeLansLinks(lans, numExternal, fh):
     for x in range(numExternal):
         fh.write("set olink%d [$ns duplex-link $vrouter $ext%d 1000Mb 0.0ms DropTail]\n" % (x + 1, x + 1))
 
-def writeIPs(numEnclaves, numExternal, numServers, numClients, fh):
+def writeIPs(numEnclaves, numExternal, numServers, numClients, useCrypto, fh):
     fh.write("\n# IPS\n")
 
     # Enumerate and write the Enclave IPs.  Enclaves are given /16's.  Thus enclave 1 is
@@ -155,18 +161,25 @@ def writeIPs(numEnclaves, numExternal, numServers, numClients, fh):
 
         fh.write("tb-set-ip-lan $ct%d $lan%d 10.%d.1.100\n"
                  % (enc, enc, enc))
-        fh.write("tb-set-ip-link $ct%d $link%d 10.%d.2.1\n"
-                 % (enc, enc, enc))
-        fh.write("tb-set-ip-link $crypto%d $link%d 10.%d.2.2\n"
-                 % (enc, enc, enc))
+        if useCrypto:
+            fh.write("tb-set-ip-link $ct%d $link%d 10.%d.2.1\n"
+                     % (enc, enc, enc))
+            fh.write("tb-set-ip-link $crypto%d $link%d 10.%d.2.2\n"
+                     % (enc, enc, enc))
 
     fh.write("\n# Egress link IPS\n")
     for n in range(numEnclaves):
         enc = n + 1
-        fh.write("tb-set-ip-link $crypto%d $elink%d 10.%d.10.1\n"
-                 % (enc, enc, enc))
-        fh.write("tb-set-ip-link $vrouter $elink%d 10.%d.10.2\n"
-                 % (enc, enc))
+        if useCrypto:
+            fh.write("tb-set-ip-link $crypto%d $elink%d 10.%d.10.1\n"
+                     % (enc, enc, enc))
+            fh.write("tb-set-ip-link $vrouter $elink%d 10.%d.10.2\n"
+                     % (enc, enc))
+        else:
+            fh.write("tb-set-ip-link $ct%d $elink%d 10.%d.2.1\n"
+                     % (enc, enc, enc))
+            fh.write("tb-set-ip-link $vrouter $elink%d 10.%d.2.2\n"
+                     % (enc, enc))
 
     # External Links are using the 10.100.X\24s.  We use the 10.100.150\24 for
     # internal vrouter routing.  If we ever have more than 149 external nodes, we'll
@@ -177,7 +190,7 @@ def writeIPs(numEnclaves, numExternal, numServers, numClients, fh):
         fh.write("tb-set-ip-link $ext%d $olink%d 10.100.%d.1\n" % (x + 1, x + 1, x + 1))
         fh.write("tb-set-ip-link $vrouter $olink%d 10.100.%d.2\n" % (x + 1, x + 1))
 
-def writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, fh):
+def writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, useCrypto, fh):
     fh.write("\n# Container Partitioning\n")
 
     # All clients and servers in an enclave are placed in the same partition
@@ -210,10 +223,11 @@ def writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, f
         fh.write("tb-add-node-attribute $ct%d containers:partition %d\n"
                  % (enc, count))
         count = count + 1
-        
-        fh.write("tb-add-node-attribute $crypto%d containers:partition %d\n"
+
+        if useCrypto:
+            fh.write("tb-add-node-attribute $crypto%d containers:partition %d\n"
                  % (enc, count))
-        count = count + 1
+            count = count + 1
 
     for n in range(numExternal):
         fh.write("tb-add-node-attribute $ext%d containers:partition %d\n"
@@ -236,7 +250,8 @@ def writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, f
     fh.write("\n# Embed Physical Nodes\n")
     for n in range(numEnclaves):
         fh.write("tb-add-node-attribute $ct%d containers:node_type embedded_pnode\n" % (n + 1))
-        fh.write("tb-add-node-attribute $crypto%d containers:node_type embedded_pnode\n" % (n + 1))
+        if useCrypto:
+            fh.write("tb-add-node-attribute $crypto%d containers:node_type embedded_pnode\n" % (n + 1))
 
 
     # External nodes could possibly be containerized.  Have to consider this!
@@ -250,7 +265,7 @@ def writeContainers(numEnclaves, numExternal, numServers, numClients, numTees, f
     fh.write("\ntb-add-node-attribute $vrouter containers:node_type embedded_pnode\n")
     fh.write("tb-add-node-attribute $control containers:node_type embedded_pnode\n")
 
-def writeStartCmds(numEnclaves, numExternal, numServers, numClients, fh):
+def writeStartCmds(numEnclaves, numExternal, numServers, numClients, useCrypto, fh):
     fh.write("\n# Start Commands\n")
     for n in range(numEnclaves):
         enc = n + 1
@@ -267,8 +282,10 @@ def writeStartCmds(numEnclaves, numExternal, numServers, numClients, fh):
                          % (enc, x + 1))
         fh.write("tb-set-node-startcmd $ct%d \"$my_start; $magi_str\"\n"
                  % (enc))
-        fh.write("tb-set-node-startcmd $crypto%d \"$my_start; $magi_str\"\n"
-                 % (enc))
+        
+        if useCrypto:
+            fh.write("tb-set-node-startcmd $crypto%d \"$my_start; $magi_str\"\n"
+                     % (enc))
                 
     for n in range(numExternal):
         fh.write("tb-set-node-startcmd $ext%d \"$my_start; $magi_str\"\n"
