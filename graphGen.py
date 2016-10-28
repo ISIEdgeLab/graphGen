@@ -11,6 +11,7 @@ class GraphGen():
 
     def __init__(self):
         self.g = None
+        self.ng = ng.NSGen(None, None, None)
 
     def readGraph(self, filename):
         self.g = nx.read_edgelist(filename)
@@ -101,7 +102,7 @@ class GraphGen():
         cg.writeClick(self.g, filename)
 
     def writeNS(self, filename, args):
-        ng.writeNS(self.g, filename, args)
+        self.ng.writeNS(self.g, filename, args)
         
 def main():
     parser = argparse.ArgumentParser(description='Create click config given a graph.')
