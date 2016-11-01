@@ -41,15 +41,43 @@ class GraphGen():
     def generateIFs(self):
         ifs = {}
         others = {}
+        enclaves = {}
+        routers = {}
+        e_links = {}
         for node in nx.nodes(self.g):
             if re.match("e[0-9]+", node):
-                ifs[node] = 'if%s' % re.search("[0-9]+", node).group(0)
-            if re.match("o[0-9]+", node):
-                ifs[node] = 'if%s' % node
-                others[node] = 1
+                enclaves[node] = node
+            else:
+                if re.match("o[0-9]+", node):
+                    ifs[node] = ['if%s' % node]
+                    others[node] = ['if%s' % node]
+                    
+        elist = list(enclaves)
+        elist.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        mh_counter = 50
+        for node in elist:
+            c = 1
+            for x in self.g.neighbors(node):
+                toAdd = "if%d" % int(re.search('[0-9]+', node).group(0))
+                if c > 1:
+                    toAdd = "if%d" % (mh_counter + int(re.search('[0-9]+', node).group(0)))
+                elink = (node, toAdd, x)
+                if node not in ifs:
+                    ifs[node] = [toAdd]
+                    e_links[node] = [elink]
+                else:
+                    ifs[node].append(toAdd)
+                    e_links[node].append(elink)
+                c = c + 1
 
+                routers[x] = toAdd
+                
+
+        nx.set_node_attributes(self.g, 'in_routers', routers)
+        nx.set_node_attributes(self.g, 'enclaves', enclaves)
         nx.set_node_attributes(self.g, 'others', others)
         nx.set_node_attributes(self.g, 'ifs', ifs)
+        nx.set_node_attributes(self.g, 'elinks', e_links)
 
     def generateIPs(self):
         ips = {}
@@ -81,10 +109,38 @@ class GraphGen():
         routes = {}
         for node in nx.nodes(self.g):
             routes[node] = {'ifaces': {}, 'ips': {}}
+
+        elinks = nx.get_node_attributes(self.g, 'elinks')
+
+        # need to determine proper link!
         
-        for node,iface in nx.get_node_attributes(self.g, 'ifs').iteritems():  
-            for edge in list(nx.bfs_edges(self.g, node)):
-                routes[edge[1]]['ifaces'][iface] = edge[0]
+        for node,ifaces in nx.get_node_attributes(self.g, 'ifs').iteritems():
+            g_tmp = self.g.copy()
+
+            for inode in nx.get_node_attributes(self.g, 'ifs'):
+                if node != inode:
+                    g_tmp.remove_node(inode)
+            
+            for link in elinks[node]:
+                c = 0
+                for link_tmp in elinks[node]:
+                    if link != link_tmp:
+                        g_tmp.add_edge("dummy%d" % c, link_tmp[2])
+                        g_tmp.remove_edge(node, link_tmp[2])
+                        c = c + 1
+                        
+                for edge in list(nx.bfs_edges(g_tmp, node)):
+                    if edge[0] == node and not re.match("dummy*", edge[1]):
+                        routes[edge[1]]['ifaces'][link[1]] = edge[0]
+                    else:
+                        if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1]))):
+                            routes[edge[1]]['ifaces'][link[1]] = edge[0]
+                c = 0
+                for link_tmp in elinks[node]:
+                    if link != link_tmp:
+                        g_tmp.remove_node("dummy%d" % c)
+                        g_tmp.add_edge(node, link_tmp[2])
+                        
 
         nx.set_node_attributes(self.g, 'routes', routes)
 

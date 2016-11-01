@@ -25,29 +25,31 @@ def writeClick(g, args):
     fh = open(filename, "w")
 
     writeRouters(fh, g)
-    writeClassifiers(fh, numInputs)
+    writeClassifiers(fh, numInputs, g)
     if args.useDPDK:
         writeVLANMultiplexing(fh, numInputs)
-    writePacketArrival(fh, numInputs, numOthers, args.useDPDK)
-    writePacketDeparture(fh, numInputs, numOthers, args.useDPDK)
+    writePacketArrival(fh, numInputs, numOthers, args.useDPDK, g)
+    writePacketDeparture(fh, numInputs, numOthers, args.useDPDK, g)
     if arpLess:
-        writeARPLess(fh, numInputs, numOthers)
+        writeARPLess(fh, numInputs, numOthers, g)
     if not arpLess:
         writeARPHandler(fh, numInputs)
     writeLinkShaping(fh, g, args)
     writeTTLDec(fh, nx.edges(g))
     writeLinks(fh, g, args)
     writeTeedLinks(fh, g, numInputs, numOthers)
-    writeDropPacketsOnRouters(fh, numInputs, in_routers)
+    writeDropPacketsOnRouters(fh, numInputs, in_routers, g)
     writeRoutersToInterfaces(fh, g, in_routers, arpLess)
     writeLocalDelivery(fh, g, nx.nodes(g), in_routers, arpLess)
     fh.close()
 
-def writeClassifiers(fh, numInput):
+def writeClassifiers(fh, numInput, g):
     fh.write("\n// Packet Classifiers\n")
-    for i in range(numInput):
+    i = 1
+    for node in nx.get_node_attributes(g, 'in_routers'):
         fh.write("c%d :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);\n"
-                 % (i + 1))
+                 % i)
+        i = i + 1
     fh.write("chost :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);\n")
 
 def writeVLANMultiplexing(fh, numInputs):
@@ -57,7 +59,7 @@ def writeVLANMultiplexing(fh, numInputs):
         vlanstr = "%s, VLAN $vlan%d" % (vlanstr, i + 1)
     fh.write("vlanmux :: VlanSwitch(%s);\n" % vlanstr)
     
-def writePacketArrival(fh, numInput, numOthers, useDPDK):
+def writePacketArrival(fh, numInput, numOthers, useDPDK, g):
     fh.write("\n// Packet Arrival\n")
     if useDPDK:
         fh.write("FromDPDKDevice(0) -> VLANDecap() -> vlanmux;\n")
@@ -68,8 +70,10 @@ def writePacketArrival(fh, numInput, numOthers, useDPDK):
 
     else:
         c = 1
-        for i in range(numInput - numOthers):
-            fh.write("FromDevice(${if%d}) -> c%d;\n" % (i + 1, i + 1))
+        in_routers = list(nx.get_node_attributes(g, 'in_routers').values())
+        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        for router in in_routers:
+            fh.write("FromDevice(${if%d}) -> c%d;\n" % (int(re.search('[0-9]+', router).group(0)), c))
             c = c + 1
         for i in range(numOthers):
             fh.write("FromDevice(${ifo%d}) -> c%d;\n" % (i + 1, c))
@@ -77,7 +81,7 @@ def writePacketArrival(fh, numInput, numOthers, useDPDK):
                      
         fh.write("FromHost(fake0) -> chost;\n")
 
-def writePacketDeparture(fh, numInput, numOthers, useDPDK):
+def writePacketDeparture(fh, numInput, numOthers, useDPDK, g):
     fh.write("\n// Packet Departure\n")
     if useDPDK:
         fh.write("outDPDK0 :: VLANEncap(ANNO) -> ToDPDKDevice(0);\n")
@@ -88,9 +92,11 @@ def writePacketDeparture(fh, numInput, numOthers, useDPDK):
         
     else:
         c = 1
-        for i in range(numInput - numOthers):
+        in_routers = list(nx.get_node_attributes(g, 'in_routers').values())
+        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        for router in in_routers:
             fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${if%d}, BURST 64);\n"
-                     % (i + 1, i + 1))
+                     % (c, int(re.search('[0-9]+', router).group(0))))
             c = c + 1
         for i in range(numOthers):
             fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${ifo%d}, BURST 64);\n"
@@ -113,13 +119,17 @@ def writeARPHandler(fh, numInput):
     fh.write("chost[1] -> c1;\n")
     fh.write("chost[2] -> arpt;\n")
 
-def writeARPLess(fh, numInput, numOthers):
+def writeARPLess(fh, numInput, numOthers, g):
     fh.write("\n// Handle ARPless\n")
     x = 1
-    for i in range(numInput - numOthers):
-        c = i + 1
+    c = 1
+    in_routers = list(nx.get_node_attributes(g, 'in_routers').values())
+    in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+    for router in in_routers:
+        if_n = int(re.search('[0-9]+', router).group(0))
         fh.write("al%d :: EtherEncap(0x0800, ${if%d}:eth, ${if%d_friend})\n" %
-                 (c, c, c))
+                 (c, if_n, if_n))
+        c = c + 1
         x = x + 1
     for i in range(numOthers):
         c = i + 1
@@ -127,15 +137,17 @@ def writeARPLess(fh, numInput, numOthers):
                  (x, c, c))
         x = x + 1
 
-def writeDropPacketsOnRouters(fh, numInput, routers):
+def writeDropPacketsOnRouters(fh, numInput, routers, g):
     fh.write("\n// Send IP Packets to Routers\n")
-    for i in range(numInput):
+    i = 0
+    for router in nx.get_node_attributes(g, 'in_routers'):
         fh.write("c%d[0] -> Strip(14) -> CheckIPHeader(0) -> router%d;\n"
                  % (i + 1, routers[i]))
+        i = i + 1
     fh.write("chost[0] -> Strip(14) -> CheckIPHeader(0) -> router%d;\n" % (routers[0]))
              
 def writeRoutersToInterfaces(fh, g, routers, arpLess):
-    numInputs = len(nx.get_node_attributes(g, 'ifs'))
+    numInputs = len(nx.get_node_attributes(g, 'in_routers'))
     fh.write("\n// Send out packets to Interfaces\n")
     for i in range(numInputs):
         neighs = list(nx.all_neighbors(g, str(routers[i])))
@@ -346,10 +358,12 @@ def writeLocalDelivery(fh, g, routers, in_routers, arpLess):
             
         
     fh.write("\n// Unknown packets to their death\n")
-    for router in in_routers:
-        pos = in_routers.index(router) + 1
+    in_rtr = list(nx.get_node_attributes(g, 'in_routers').values())
+    in_rtr.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+    for router in in_rtr:
+        pos = in_rtr.index(router) + 1
         fh.write("c%d[3] -> Print(\"${if%d} Non IP\") -> Discard;\n"
-                 % (pos, pos))
+                 % (pos, int(re.search('[0-9]+', router).group(0))))
 
     fh.write("chost[3] -> Print(\"Host Non IP\") -> Discard;\n")
                  
