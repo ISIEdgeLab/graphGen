@@ -33,7 +33,7 @@ def writeClick(g, args):
     if arpLess:
         writeARPLess(fh, numInputs, numOthers, g)
     if not arpLess:
-        writeARPHandler(fh, numInputs)
+        writeARPHandler(fh, numInputs, g)
     writeLinkShaping(fh, g, args)
     writeTTLDec(fh, nx.edges(g))
     writeLinks(fh, g, args)
@@ -104,17 +104,21 @@ def writePacketDeparture(fh, numInput, numOthers, useDPDK, g):
             c = c + 1
         
             
-def writeARPHandler(fh, numInput):
+def writeARPHandler(fh, numInput, g):
     fh.write("\n// Handle ARP\n")
-    fh.write("arpt :: Tee(%d);\n\n" % (numInput + 1))
-    for i in range(numInput):
-        c = i + 1
+    in_routers = list(nx.get_node_attributes(g, 'in_routers').values())
+    in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+    fh.write("arpt :: Tee(%d);\n\n" % (len(in_routers) + 1))
+    i = 1
+    for in_router in in_routers:
+        c = int(re.search('[0-9]+', in_router).group(0))
         fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d}:ip ${if%d}:eth) -> out%d;\n"
-                 % (c, c, c, c, c))
+                 % (i, i, c, c, i))
         fh.write("arpq%d :: ARPQuerier(${if%d}:ip, ${if%d}:eth) -> out%d;\n"
-                 % (c, c, c, c))
-        fh.write("c%d[2] -> arpt;\n" % c)
-        fh.write("arpt[%d] -> [1]arpq%d;\n\n" % (i, c))
+                 % (i, c, c, i))
+        fh.write("c%d[2] -> arpt;\n" % i)
+        fh.write("arpt[%d] -> [1]arpq%d;\n\n" % (i - 1, c))
+        i = i + 1
 
     fh.write("chost[1] -> c1;\n")
     fh.write("chost[2] -> arpt;\n")
