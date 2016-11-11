@@ -246,11 +246,9 @@ class NSGen():
                     x = x + 1
 
         self.fh.write("\n# Egress link IPS\n")
-        mh_enclave_offset = 50
         for enclave in self.enclaves:
             enc = int(re.search("[0-9]+", enclave).group(0))       
             x = 1
-            c_enc = enc
             for neighbors in self.g.neighbors(enclave):
                 if len(self.g.neighbors(enclave)) == 1:
                     if self.useCrypto:
@@ -264,18 +262,18 @@ class NSGen():
                         self.fh.write("tb-set-ip-link $vrouter $elink%d 10.%d.2.2\n"
                                       % (enc, enc))
                 else:
+                    c_enc = int(re.search("[0-9]+", ifs[enclave][x - 1]).group(0))
                     if self.useCrypto:
                         self.fh.write("tb-set-ip-link ${crypto%d-%d} ${elink%d-%d} 10.%d.10.1\n"
-                                      % (enc, x, enc, x, enc))
+                                      % (enc, x, enc, x, c_enc))
                         self.fh.write("tb-set-ip-link $vrouter ${elink%d-%d} 10.%d.10.2\n"
-                                      % (enc, x, enc))
+                                      % (enc, x, c_enc))
                     else:
                         self.fh.write("tb-set-ip-link $ct%d ${elink%d-%d} 10.%d.2.1\n"
                                       % (enc, enc, x, c_enc))
                         self.fh.write("tb-set-ip-link $vrouter ${elink%d-%d} 10.%d.2.2\n"
                                       % (enc, x, c_enc))
-                    c_enc = mh_enclave_offset + x
-                    mh_enclave_offset = c_enc
+
                 x = x + 1
 
         # External Links are using the 10.100.X\24s.  We use the 10.100.150\24 for
