@@ -207,7 +207,7 @@ class NSGen():
         # 10.1.0.0/16 etc...  10.100 is reserved for internal use.  If we ever have more than 99
         # enclaves, we'll have to deal.
 
-        mh_enclave_offset = 50
+        ifs = nx.get_node_attributes(self.g, 'ifs')
         for enclave in self.enclaves:
             enc = int(re.search("[0-9]+", enclave).group(0))
             addr = 1
@@ -230,7 +230,6 @@ class NSGen():
                           % (enc, enc, enc))
             if self.useCrypto:
                 x = 1
-                c_enc = enc
                 for neighbors in self.g.neighbors(enclave):
                     if len(self.g.neighbors(enclave)) == 1:
                         self.fh.write("tb-set-ip-link $ct%d $link%d 10.%d.2.1\n"
@@ -238,12 +237,11 @@ class NSGen():
                         self.fh.write("tb-set-ip-link $crypto%d $link%d 10.%d.2.2\n"
                                       % (enc, enc, enc))
                     else:
+                        c_enc = int(re.search("[0-9]+", ifs[enclave][x - 1]).group(0))
                         self.fh.write("tb-set-ip-link $ct%d ${link%d-%d} 10.%d.2.1\n"
                                       % (enc, enc, x, c_enc))
                         self.fh.write("tb-set-ip-link ${crypto%d-%d} ${link%d-%d} 10.%d.2.2\n"
                                       % (enc, x, enc, x, c_enc))
-                        c_enc = mh_enclave_offset + x
-                        mh_enclave_offset = c_enc 
 
                     x = x + 1
 
