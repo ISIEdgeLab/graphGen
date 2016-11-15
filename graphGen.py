@@ -130,11 +130,12 @@ class GraphGen():
                         c = c + 1
                         
                 for edge in list(nx.bfs_edges(g_tmp, node)):
-                    if edge[0] == node and not re.match("dummy*", edge[1]):
-                        routes[edge[1]]['ifaces'][link[1]] = edge[0]
-                    else:
-                        if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1]))):
-                            routes[edge[1]]['ifaces'][link[1]] = edge[0]
+                    for iface in ifaces:
+                        if edge[0] == node and not re.match("dummy*", edge[1]):
+                            routes[edge[1]]['ifaces'][iface] = edge[0]
+                        else:
+                            if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1]))):
+                                routes[edge[1]]['ifaces'][iface] = edge[0]
                 c = 0
                 for link_tmp in elinks[node]:
                     if link != link_tmp:
