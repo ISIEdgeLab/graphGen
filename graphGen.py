@@ -116,7 +116,6 @@ class GraphGen():
         # need to determine proper link!
         
         for node,ifaces in nx.get_node_attributes(self.g, 'ifs').iteritems():
-            g_tmp = self.g.copy()
 
             #for inode in nx.get_node_attributes(self.g, 'ifs'):
             #    if node != inode:
@@ -125,35 +124,40 @@ class GraphGen():
             e_nodes = nx.get_node_attributes(self.g, 'ifs')
             
             for link in elinks[node]:
+                g_tmp = self.g.copy()
                 c = 0
                 for link_tmp in elinks[node]:
                     if link != link_tmp:
                         g_tmp.add_edge("dummy%d" % c, link_tmp[2])
                         g_tmp.remove_edge(node, link_tmp[2])
                         c = c + 1
-                        
-                for edge in list(nx.bfs_edges(g_tmp, node)):
-                    for iface in ifaces:
-                        if edge[0] == node and not re.match("dummy*", edge[1]):
-                            if iface == link[1]:
-                                routes[edge[1]]['ifaces'][iface] = edge[0]
-                            elif iface not in routes[edge[1]]['ifaces']:
-                                routes[edge[1]]['ifaces'][iface] = edge[0]
-                        else:
-                            if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1])) or
-                                    edge[0] in e_nodes):
+                weights = {}
+                for onode in e_nodes:
+                    if not onode == node:                            
+                        for edge in nx.edges(g_tmp, onode):
+                            weights[edge] = 100
+                            
+                # NEED TO CLEAN THIS CRAP UP!    
+                nx.set_edge_attributes(g_tmp, 'weights', weights)
+                paths = nx.single_source_dijkstra_path(g_tmp, node, weight='weights')
+                for src, path in paths.iteritems():                    
+                    for x in range(1, len(path)):
+                        edge = (path[x - 1], path[x])
+                        for iface in ifaces:
+                            if edge[0] == node and not re.match("dummy*", edge[1]):
                                 if iface == link[1]:
                                     routes[edge[1]]['ifaces'][iface] = edge[0]
                                 elif iface not in routes[edge[1]]['ifaces']:
                                     routes[edge[1]]['ifaces'][iface] = edge[0]
+                            else:
+                                if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1])) or
+                                        edge[0] in e_nodes) and (iface in routes[edge[0]]['ifaces']):
+                                    if iface == link[1]:
+                                        routes[edge[1]]['ifaces'][iface] = edge[0]
+                                    elif iface not in routes[edge[1]]['ifaces']:
+                                        routes[edge[1]]['ifaces'][iface] = edge[0]
                                     
-                c = 0
-                for link_tmp in elinks[node]:
-                    if link != link_tmp:
-                        g_tmp.remove_node("dummy%d" % c)
-                        g_tmp.add_edge(node, link_tmp[2])
                         
-
         nx.set_node_attributes(self.g, 'routes', routes)
 
     def distributeIPs(self):
