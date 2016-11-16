@@ -244,6 +244,8 @@ def writeRouters(fh, g):
     fh.write("\n// Routers\n")
     nodes = nx.nodes(g)
     nodes.sort()
+    in_routers = nx.get_node_attributes(g, 'in_routers')
+    
     for node in nodes:
         if re.match("[oe][0-9]+", node):
             continue
@@ -254,7 +256,7 @@ def writeRouters(fh, g):
         last_str = ""
         middle_str = ""
         for iface,nhop in ifaces.iteritems():
-            if re.match("[oe][0-9]+", nhop):
+            if node in in_routers and in_routers[node] == iface:
                 last_str = "%s,\n                         ${%s_16} ${%s_gw} %d" % (last_str, iface, iface, neighbors.index(nhop))
                 middle_str = "${%s}:ip %d" % (iface, len(neighbors))
                 

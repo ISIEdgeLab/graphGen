@@ -57,7 +57,9 @@ class GraphGen():
         mh_counter = 50
         for node in elist:
             c = 1
-            for x in self.g.neighbors(node):
+            neighbors = self.g.neighbors(node)
+            neighbors.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+            for x in neighbors:
                 toAdd = "if%d" % int(re.search('[0-9]+', node).group(0))
                 if c > 1:
                     toAdd = "if%d" % (mh_counter + int(re.search('[0-9]+', node).group(0)))
@@ -71,8 +73,7 @@ class GraphGen():
                 c = c + 1
 
                 routers[x] = toAdd
-                
-
+                                
         nx.set_node_attributes(self.g, 'in_routers', routers)
         nx.set_node_attributes(self.g, 'enclaves', enclaves)
         nx.set_node_attributes(self.g, 'others', others)
@@ -168,7 +169,7 @@ class GraphGen():
         routes = nx.get_node_attributes(self.g, 'routes')
         e_nodes = nx.get_node_attributes(self.g, 'ifs')
         in_routers = nx.get_node_attributes(self.g, 'in_routers')
-
+        
         for node in e_nodes:
             route = routes[node]['ifaces']
             for iface, forward in route.iteritems():
