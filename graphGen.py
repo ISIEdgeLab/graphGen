@@ -117,9 +117,11 @@ class GraphGen():
         for node,ifaces in nx.get_node_attributes(self.g, 'ifs').iteritems():
             g_tmp = self.g.copy()
 
-            for inode in nx.get_node_attributes(self.g, 'ifs'):
-                if node != inode:
-                    g_tmp.remove_node(inode)
+            #for inode in nx.get_node_attributes(self.g, 'ifs'):
+            #    if node != inode:
+            #        g_tmp.remove_node(inode)
+
+            e_nodes = nx.get_node_attributes(self.g, 'ifs')
             
             for link in elinks[node]:
                 c = 0
@@ -132,10 +134,18 @@ class GraphGen():
                 for edge in list(nx.bfs_edges(g_tmp, node)):
                     for iface in ifaces:
                         if edge[0] == node and not re.match("dummy*", edge[1]):
-                            routes[edge[1]]['ifaces'][iface] = edge[0]
-                        else:
-                            if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1]))):
+                            if iface == link[1]:
                                 routes[edge[1]]['ifaces'][iface] = edge[0]
+                            elif iface not in routes[edge[1]]['ifaces']:
+                                routes[edge[1]]['ifaces'][iface] = edge[0]
+                        else:
+                            if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1])) or
+                                    edge[0] in e_nodes):
+                                if iface == link[1]:
+                                    routes[edge[1]]['ifaces'][iface] = edge[0]
+                                elif iface not in routes[edge[1]]['ifaces']:
+                                    routes[edge[1]]['ifaces'][iface] = edge[0]
+                                    
                 c = 0
                 for link_tmp in elinks[node]:
                     if link != link_tmp:
@@ -153,6 +163,21 @@ class GraphGen():
 
         nx.set_node_attributes(self.g, 'routes', routes)
         
+    def writeRoutes(self, filename):
+        fh = open(filename, 'w')
+        routes = nx.get_node_attributes(self.g, 'routes')
+        e_nodes = nx.get_node_attributes(self.g, 'ifs')
+        in_routers = nx.get_node_attributes(self.g, 'in_routers')
+
+        for node in e_nodes:
+            route = routes[node]['ifaces']
+            for iface, forward in route.iteritems():
+                enclave = re.search('[0-9]+', node).group(0)
+                prefix = re.search('[0-9]+', iface).group(0)
+                forward = re.search('[0-9]+', in_routers[forward]).group(0)
+                output = 'ct%s %s %s\n' % (enclave, prefix, forward)
+                fh.write(output)            
+        fh.close()
         
         
     def writeClick(self, filename):
@@ -176,6 +201,7 @@ def main():
     parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
     parser.add_argument('--disable-containers', dest='useContainers', default=True, help='Disable Containerization', action='store_const', const=False)
     parser.add_argument('--disable-crypto-nodes', dest='useCrypto', default=True, help='Do not add any crypto nodes to enclaves', action='store_const', const=False)
+    parser.add_argument('--write-routes', dest='writeRoutes', default=False, help='Write routes when using multi-homing', action='store_const', const = True)
     parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
     parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
     parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP) CURRENTLY UNAVAILABLE', action='store_const', const=True)
@@ -190,6 +216,9 @@ def main():
         gen.readRoutes(args.routes)
         
     gen.distributeIPs()
+
+    if args.writeRoutes:
+        gen.writeRoutes('enclave.routes')
     if args.draw_output != None:
         gen.drawGraph(args.draw_output)
     gen.writeClick(args)

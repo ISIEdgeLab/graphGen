@@ -57,6 +57,9 @@ class NSGen():
         self.fh.write("\nset magi_str \"sudo python /proj/edgect/magi/current/magi_bootstrap.py -fp /proj/edgect/magi/current/\"\n")
         self.fh.write("\nset click_str \"/proj/edgect/exp_scripts/startClickAny.sh %s\"\n" % self.filename.split('.')[0])
 
+        if self.args.writeRoutes:
+            self.fh.write("\nset ct_str \"/proj/edgect/exp_scripts/updateRoutesAny.sh %s\"\n" % self.filename.split('.')[0])
+        
         # Always have a basic my_start regardless of user definition
         if start_cmd == "":
             self.fh.write("\nset my_start \"touch /tmp/my_start\"\n")
@@ -389,8 +392,14 @@ class NSGen():
                 for x in range(self.numServers):
                     self.fh.write("tb-set-node-startcmd $server%d%d \"$my_start; $magi_str\"\n"
                                   % (enc, x + 1))
-            self.fh.write("tb-set-node-startcmd $ct%d \"$my_start; $magi_str\"\n"
-                          % (enc))
+
+            if self.args.writeRoutes:
+                self.fh.write("tb-set-node-startcmd $ct%d \"$my_start; $ct_str; $magi_str\"\n"
+                              % (enc))
+        
+            else:
+                self.fh.write("tb-set-node-startcmd $ct%d \"$my_start; $magi_str\"\n"
+                              % (enc))
         
             if self.useCrypto:
                 if len(self.g.neighbors(enclave)) == 1:
