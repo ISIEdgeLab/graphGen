@@ -131,15 +131,15 @@ class GraphGen():
                         g_tmp.add_edge("dummy%d" % c, link_tmp[2])
                         g_tmp.remove_edge(node, link_tmp[2])
                         c = c + 1
-                weights = nx.get_edge_attributes(g_tmp, 'weights')
+                weights = nx.get_edge_attributes(g_tmp, 'weight')
                 for onode in e_nodes:
                     if not onode == node:                            
                         for edge in nx.edges(g_tmp, onode):
                             weights[edge] = 100
                             
                 # NEED TO CLEAN THIS CRAP UP!    
-                nx.set_edge_attributes(g_tmp, 'weights', weights)
-                paths = nx.single_source_dijkstra_path(g_tmp, node, weight='weights')
+                nx.set_edge_attributes(g_tmp, 'weight', weights)
+                paths = nx.single_source_dijkstra_path(g_tmp, node, weight='weight')
                 for src, path in paths.iteritems():                    
                     for x in range(1, len(path)):
                         edge = (path[x - 1], path[x])
