@@ -131,7 +131,7 @@ class GraphGen():
                         g_tmp.add_edge("dummy%d" % c, link_tmp[2])
                         g_tmp.remove_edge(node, link_tmp[2])
                         c = c + 1
-                weights = {}
+                weights = nx.get_edge_attributes(g_tmp, 'weights')
                 for onode in e_nodes:
                     if not onode == node:                            
                         for edge in nx.edges(g_tmp, onode):
