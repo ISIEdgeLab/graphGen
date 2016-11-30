@@ -12,6 +12,7 @@ class GraphGen():
     def __init__(self):
         self.g = None
         self.ng = ng.NSGen(None, None, None)
+        self.cg = cg.ClickGen(None, None)
 
     def readGraph(self, filename):
         self.g = nx.read_edgelist(filename)
@@ -186,7 +187,7 @@ class GraphGen():
         
         
     def writeClick(self, filename):
-        cg.writeClick(self.g, filename)
+        self.cg.writeClick(self.g, filename)
 
     def writeNS(self, filename, args):
         self.ng.writeNS(self.g, filename, args)

@@ -66,11 +66,12 @@ class NSGen():
         else:
             self.fh.write("\nset my_start \"%s\"\n" % start_cmd)
 
-        self.fh.write("\n# Create hardware types\n")
-        self.fh.write("tb-make-soft-vtype click_type {dl380g3 MicroCloud}\n")
-        self.fh.write("tb-make-soft-vtype ct_type {sm dl380g3}\n")
-        self.fh.write("tb-make-soft-vtype crypto_type {sm dl380g3 MicroCloud}\n")
-        self.fh.write("tb-make-soft-vtype cli_server_type {sm dl380g3 MicroCloud}\n")
+        if not self.args.useContainers:
+            self.fh.write("\n# Create hardware types\n")
+            self.fh.write("tb-make-soft-vtype click_type {dl380g3 MicroCloud}\n")
+            self.fh.write("tb-make-soft-vtype ct_type {sm dl380g3}\n")
+            self.fh.write("tb-make-soft-vtype crypto_type {sm dl380g3 MicroCloud}\n")
+            self.fh.write("tb-make-soft-vtype cli_server_type {sm dl380g3 MicroCloud}\n")
                       
         
     def writeEnclaveNodes(self, os):
