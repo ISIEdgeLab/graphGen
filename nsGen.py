@@ -91,6 +91,9 @@ class NSGen():
                 lstr = "server%d ct%d" % (enc, enc)
                 self.fh.write("set server%d [$ns node]\n" % enc)
                 self.fh.write("tb-set-hardware $server%d cli_server_type\n" % enc)
+                if not self.args.useContainers:
+                    self.fh.write("tb-set-node-os $server%d %s\n" % (enc, os))
+
             else:
                 for x in range(self.numServers):
                     if x == 0:
@@ -99,6 +102,8 @@ class NSGen():
                         lstr = "%s server%d%d ct%d" % (lstr, enc, x + 1, enc)
                         self.fh.write("set server%d%d [$ns node]\n" % (enc, x + 1))
                         self.fh.write("tb-set-hardware $server%d%d cli_server_type\n" % (enc, x + 1))
+                        if not self.args.useContainers:
+                            self.fh.write("tb-set-node-os $server%d%d %s\n" % (enc, x + 1, os))
 
 
             # Write Client nodes
@@ -106,6 +111,8 @@ class NSGen():
                 self.fh.write("set traf%d%d [$ns node]\n" % (enc, x + 1))
                 self.fh.write("tb-set-hardware $traf%d%d cli_server_type\n" % (enc, x + 1))
                 lstr = "%s traf%d%d" % (lstr, enc, x + 1)
+                if not self.args.useContainers:
+                    self.fh.write("tb-set-node-os $traf%d%d %s\n" % (enc, x + 1, os))
 
             # Write CT and Crypto nodes
             self.fh.write("set ct%d [$ns node]\n" % enc)

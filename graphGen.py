@@ -110,7 +110,7 @@ class GraphGen():
     def distributeIFs(self):
         routes = {}
         for node in nx.nodes(self.g):
-            routes[node] = {'ifaces': {}, 'ips': {}}
+            routes[node] = {'ifaces': {}, 'ips': {}, 'costs': {}}
 
         elinks = nx.get_node_attributes(self.g, 'elinks')
 
@@ -118,14 +118,15 @@ class GraphGen():
         
         for node,ifaces in nx.get_node_attributes(self.g, 'ifs').iteritems():
 
-            #for inode in nx.get_node_attributes(self.g, 'ifs'):
-            #    if node != inode:
-            #        g_tmp.remove_node(inode)
-
             e_nodes = nx.get_node_attributes(self.g, 'ifs')
             
             for link in elinks[node]:
                 g_tmp = self.g.copy()
+
+                #for inode in nx.get_node_attributes(self.g, 'ifs'):
+                #    if node != inode:
+                #        g_tmp.remove_node(inode)
+                        
                 c = 0
                 for link_tmp in elinks[node]:
                     if link != link_tmp:
@@ -141,23 +142,32 @@ class GraphGen():
                 # NEED TO CLEAN THIS CRAP UP!    
                 nx.set_edge_attributes(g_tmp, 'weight', weights)
                 paths = nx.single_source_dijkstra_path(g_tmp, node, weight='weight')
-                for src, path in paths.iteritems():                    
+                for src, path in paths.iteritems():
+                    cost = 1
                     for x in range(1, len(path)):
                         edge = (path[x - 1], path[x])
                         for iface in ifaces:
                             if edge[0] == node and not re.match("dummy*", edge[1]):
                                 if iface == link[1]:
                                     routes[edge[1]]['ifaces'][iface] = edge[0]
+                                    routes[edge[1]]['costs'][iface] = cost
                                 elif iface not in routes[edge[1]]['ifaces']:
                                     routes[edge[1]]['ifaces'][iface] = edge[0]
+                                    routes[edge[1]]['costs'][iface] = cost
                             else:
                                 if not (re.match("dummy*", edge[0]) or (re.match("dummy*", edge[1])) or
                                         edge[0] in e_nodes) and (iface in routes[edge[0]]['ifaces']):
                                     if iface == link[1]:
                                         routes[edge[1]]['ifaces'][iface] = edge[0]
+                                        routes[edge[1]]['costs'][iface] = cost
                                     elif iface not in routes[edge[1]]['ifaces']:
                                         routes[edge[1]]['ifaces'][iface] = edge[0]
-                                    
+                                        routes[edge[1]]['costs'][iface] = cost
+                            if edge[0] in e_nodes and edge[0] != node:
+                                cost = cost + 100
+                            else:
+                                cost = cost + 1
+                                
                         
         nx.set_node_attributes(self.g, 'routes', routes)
 
@@ -177,11 +187,14 @@ class GraphGen():
         
         for node in e_nodes:
             route = routes[node]['ifaces']
+            cost = routes[node]['costs']
             for iface, forward in route.iteritems():
                 enclave = re.search('[0-9]+', node).group(0)
                 prefix = re.search('[0-9]+', iface).group(0)
                 forward = re.search('[0-9]+', in_routers[forward]).group(0)
-                output = 'ct%s %s %s\n' % (enclave, prefix, forward)
+                if cost[iface] >= 200:
+                    forward = 0
+                output = 'ct%s %s %s %d\n' % (enclave, prefix, forward, cost[iface])
                 fh.write(output)            
         fh.close()
         
