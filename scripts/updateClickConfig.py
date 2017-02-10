@@ -3,6 +3,7 @@ import sys, time
 import logging
 import netaddr as na
 import netifaces as ni
+import json
 
 from subprocess import Popen, PIPE, check_call, CalledProcessError, STDOUT
 import re
@@ -123,6 +124,8 @@ class ClickConfig(object):
     def __init__(self):
         self.template_file = "/tmp/vrouter.template"
         self.out_file = "/tmp/vrouter.click"
+        self.input_file = "/tmp/ifconfig.json"
+        self.routes_file = "/tmp/routes.json"
         self.nbrs = OneHopNeighbors()
         self.nbrs.get_neighbors()
 
@@ -134,10 +137,12 @@ class ClickConfig(object):
             sys.exit(1)
 
         self.arpless = False
+        self.useDPDK = False
         for line in self.tf:
 	    if "friend" in line:
 		self.arpless = True
-		break
+	    if "$DPDKDeparture" in line:
+                self.useDPDK = True
         self.tf.close()
         
         self.ifs = {}
@@ -146,7 +151,36 @@ class ClickConfig(object):
         self.routes = {}
 
     def generate_inputs(self):
-        
+        fh_routes = open(self.routes_file)
+        fh_inputs = open(self.input_file)
+        inputs = json.load(fh_inputs)
+        routes = json.load(fh_routes)
+
+        our_routes = {}
+        priv_slash8 = na.IPNetwork("10.0.0.0/8")
+        for route in routes:
+            if route['bits'] == "16" and na.IPAddress(route['net']) in priv_slash8:
+                our_routes[route['prefix'].encode('ascii')] = route['nexthop']
+
+        for info in inputs:
+            if 'vlan' not in info:
+                DPDKArrStr = self.data.get('DPDKArrival', "")
+                DPDKDetStr = self.data.get('DPDKDeparture', "")
+                DPDKArrStr = "%s\nFromDPDKDevice(%d) -> VLANDecap() -> vlanmux;" % (DPDKArrStr, info['port'])
+                DPDKDetStr = "%s\noutDPDK%d :: ToDPDKDevice(%d);" % (DPDKDetStr, info['port'], info['port'])
+                self.data['DPDKArrival'] = DPDKArrStr
+                self.data['DPDKDeparture'] = DPDKDetStr
+            else:
+                ifnum = int(info['ip'].split('.')[1])
+                our16 = na.IPNetwork('%s/255.255.0.0' % info['ip'])
+                self.data['vlan%d' % ifnum] = info['vlan']
+                self.data['if%d' % ifnum] = info['interface']
+                self.data['if%d_ip' % ifnum] = info['ip']
+                self.data['if%d_eth' % ifnum] = info['hwaddr']
+                self.data['if%d_16' % ifnum] = "%s" % our16.cidr
+                self.data['if%d_gw' % ifnum] = our_routes["%s" % our16.cidr]
+                self.data['out_if%d' % ifnum] = "outDPDK%d" % info['port']
+
         
     def parse_routing(self):
         (output, error) = Popen(["ip", "route"], stdout = PIPE, stderr = PIPE).communicate()
@@ -212,17 +246,22 @@ class ClickConfig(object):
         self.data['routing'] = route_str
                 
     def write_config(self):
-	time.sleep(10)
+        if not self.useDPDK:
+	    time.sleep(10)
         config = self.template.substitute(self.data)
         fh = open(self.out_file, "w")
         fh.write(config)
         fh.close()
 
     def updateConfig(self):
-        self.parse_routing()
-        #self.generate_route_str()
-        if self.arpless:
-            self.process_arp()
+        if not self.useDPDK:
+            self.parse_routing()
+            #self.generate_route_str()
+            if self.arpless:
+                self.process_arp()
+        else:
+            self.generate_inputs()
+        
         self.write_config()
 
 

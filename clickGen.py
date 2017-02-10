@@ -63,24 +63,28 @@ class ClickGen():
 
     def writeVLANMultiplexing(self):
         self.fh.write("\n// VLAN Multiplexing\n")
+        in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
+        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
         vlanstr = ""
-        for i in range(self.numInputs):
-            vlanstr = "%s, VLAN $vlan%d" % (vlanstr, i + 1)
+        for router in in_routers:
+            vlanstr = "%s, VLAN ${vlan%d}" % (vlanstr, (int(re.search('[0-9]+', router).group(0))))
+        vlanstr = vlanstr[2:]
         self.fh.write("vlanmux :: VlanSwitch(%s);\n" % vlanstr)
     
     def writePacketArrival(self):
         self.fh.write("\n// Packet Arrival\n")
+        in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
+        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
         if self.useDPDK:
-            self.fh.write("FromDPDKDevice(0) -> VLANDecap() -> vlanmux;\n")
-            self.fh.write("FromDPDKDevice(1) -> VLANDecap() -> vlanmux;\n")
+            self.fh.write("$DPDKArrival\n")
 
-            for i in range(self.numInput):
-                self.fh.write("vlanmux[%d] -> c%d;\n" % (i, i + 1))
-
+            i = 0
+            for router in in_routers:
+                self.fh.write("vlanmux[%d] -> c%d;\n" % (i, (int(re.search('[0-9]+', router).group(0)))))
+                i = i + 1
+                            
         else:
             c = 1
-            in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
-            in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
             for router in in_routers:
                 self.fh.write("FromDevice(${if%d}) -> c%d;\n" % (int(re.search('[0-9]+', router).group(0)), c))
                 c = c + 1
@@ -95,17 +99,19 @@ class ClickGen():
         
     def writePacketDeparture(self):
         self.fh.write("\n// Packet Departure\n")
+        in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
+        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
         if self.useDPDK:
-            self.fh.write("outDPDK0 :: VLANEncap(ANNO) -> ToDPDKDevice(0);\n")
-            self.fh.write("outDPDK1 :: VLANEncap(ANNO) -> ToDPDKDevice(1);\n")
-            for i in range(self.numInput):
-                self.fh.write("out%d :: SetVLANAnno($vlan%d) -> ;\n"
-                              % (i + 1, i + 1))
+            self.fh.write("$DPDKDeparture\n")
+            i = 0
+            for router in in_routers:
+                r = (int(re.search('[0-9]+', router).group(0)))
+                self.fh.write("out%d :: SetVLANAnno(${vlan%d}) -> ${out_if%d};\n"
+                              % (i + 1, r, r))
+                i = i + 1
         
         else:
             c = 1
-            in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
-            in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
             for router in in_routers:
                 self.fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${if%d}, BURST 64);\n"
                               % (c, int(re.search('[0-9]+', router).group(0))))
@@ -124,10 +130,16 @@ class ClickGen():
         i = 1
         for in_router in in_routers:
             c = int(re.search('[0-9]+', in_router).group(0))
-            self.fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d}:ip ${if%d}:eth) -> out%d;\n"
-                          % (i, i, c, c, i))
-            self.fh.write("arpq%d :: ARPQuerier(${if%d}:ip, ${if%d}:eth) -> out%d;\n"
-                          % (i, c, c, i))
+            if self.args.useDPDK:
+                self.fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d_ip} ${if%d_eth}) -> out%d;\n"
+                              % (i, i, c, c, i))
+                self.fh.write("arpq%d :: ARPQuerier(${if%d_ip}, ${if%d_eth}) -> out%d;\n"
+                              % (i, c, c, i))
+            else:
+                self.fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d}:ip ${if%d}:eth) -> out%d;\n"
+                              % (i, i, c, c, i))
+                self.fh.write("arpq%d :: ARPQuerier(${if%d}:ip, ${if%d}:eth) -> out%d;\n"
+                              % (i, c, c, i))
             self.fh.write("c%d[2] -> arpt;\n" % i)
             self.fh.write("arpt[%d] -> [1]arpq%d;\n\n" % (i - 1, c))
             i = i + 1
@@ -271,8 +283,11 @@ class ClickGen():
             for iface,nhop in ifaces.iteritems():
                 if node in in_routers and in_routers[node] == iface:
                     last_str = "%s,\n                         ${%s_16} ${%s_gw} %d" % (last_str, iface, iface, neighbors.index(nhop))
-                    middle_str = "${%s}:ip %d" % (iface, len(neighbors))
-                
+                    if self.args.useDPDK:
+                        middle_str = "${%s_ip} %d" % (iface, len(neighbors))
+                    else:
+                        middle_str = "${%s}:ip %d" % (iface, len(neighbors))
+                                                
                 else:
                     last_str = "%s,\n                         ${%s_16} %d" % (last_str, iface, neighbors.index(nhop))
             for ip, nhop in ips.iteritems():
@@ -356,7 +371,10 @@ class ClickGen():
         
     def writeLocalDelivery(self):
         self.fh.write("\n// Local Delivery\n")
-        self.fh.write("toh :: ToHost;\n\n")
+        if self.args.useDPDK:
+            self.fh.write("toh :: ToHost(fake0);\n\n")
+        else:
+            self.fh.write("toh :: ToHost;\n\n")
         routers = nx.nodes(self.g)
         for router in routers:
             if not re.match("[oe][0-9]+", router):
@@ -365,7 +383,7 @@ class ClickGen():
                               % (router, len(neighbors)))
 
         if not self.arpLess:
-            self.fh.write("arpt[%d] -> toh;\n" % len(routers))
+            self.fh.write("arpt[%d] -> toh;\n" % len(self.in_routers))
         else:
             for router in self.in_routers:
                 pos = self.in_routers.index(router) + 1
