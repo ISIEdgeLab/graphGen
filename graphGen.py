@@ -137,7 +137,7 @@ class GraphGen():
                 for onode in e_nodes:
                     if not onode == node:                            
                         for edge in nx.edges(g_tmp, onode):
-                            weights[edge] = 100
+                            weights[edge] = 10000
                             
                 # NEED TO CLEAN THIS CRAP UP!    
                 nx.set_edge_attributes(g_tmp, 'weight', weights)
@@ -164,7 +164,7 @@ class GraphGen():
                                         routes[edge[1]]['ifaces'][iface] = edge[0]
                                         routes[edge[1]]['costs'][iface] = cost
                             if edge[0] in e_nodes and edge[0] != node:
-                                cost = cost + 100
+                                cost = cost + 10000
                             else:
                                 cost = cost + 1
                                 
@@ -192,11 +192,60 @@ class GraphGen():
                 enclave = re.search('[0-9]+', node).group(0)
                 prefix = re.search('[0-9]+', iface).group(0)
                 forward = re.search('[0-9]+', in_routers[forward]).group(0)
-                if cost[iface] >= 200:
+                if cost[iface] >= 20000:
                     forward = 0
                 output = 'ct%s %s %s %d\n' % (enclave, prefix, forward, cost[iface])
                 fh.write(output)            
         fh.close()
+        
+
+    def writePaths(self, filename):
+        fh = open(filename, 'w')
+        e_nodes = nx.get_node_attributes(self.g, 'ifs')
+
+        paths = {}
+
+        ifs = []
+        for node in e_nodes:
+            ifs.extend(e_nodes[node])
+            
+        # Build Paths
+        for node in e_nodes:
+            paths[node] = []
+            for iface in ifs:
+                if iface not in e_nodes[node]:
+                    newPath = self.discoverPath(node, iface)
+                    if newPath != []:
+                        prefix = re.search('[0-9]+', iface).group(0)
+                        newPath.insert(0, "10.%s.0.0/16" % prefix)
+                        paths[node].append(newPath)
+                    
+        for node in e_nodes:
+            for path in paths[node]:
+                path_line = ", ".join(path)
+                fh.write("%s\n" % path_line)
+
+        fh.close()
+
+    def discoverPath(self, src, dest):
+        routes = nx.get_node_attributes(self.g, 'routes')
+        e_nodes = nx.get_node_attributes(self.g, 'ifs')
+        
+        curr = src
+        path = []
+        done = False
+        while(not done):
+            path.append(curr)
+            if curr in e_nodes and dest in e_nodes[curr]:
+                done = True
+            else:
+                if routes[curr]['costs'][dest] > 20000:
+                    path = []
+                    done = True
+                else:
+                    curr = routes[curr]['ifaces'][dest]
+        return path
+                
         
         
     def writeClick(self, filename):
@@ -224,6 +273,7 @@ def main():
     parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
     parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
     parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP) CURRENTLY UNAVAILABLE', action='store_const', const=True)
+    parser.add_argument('--write-paths', dest='writePaths', default="", help='Write enclave routing paths to the specified file')
     args = parser.parse_args()
 
     gen = GraphGen()
@@ -238,6 +288,8 @@ def main():
 
     if args.writeRoutes:
         gen.writeRoutes('enclave.routes')
+    if args.writePaths != "":
+        gen.writePaths(args.writePaths)
     if args.draw_output != None:
         gen.drawGraph(args.draw_output)
     gen.writeClick(args)
