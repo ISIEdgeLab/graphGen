@@ -9,10 +9,18 @@ import argparse
 
 class GraphGen():
 
-    def __init__(self):
+    def __init__(self, filename, routes=None):
         self.g = None
         self.ng = ng.NSGen(None, None, None)
         self.cg = cg.ClickGen(None, None)
+
+        self.readGraph(filename)
+        self.generateIFs()
+        self.generateIPs()
+        self.distributeIFs()
+        if routes != None:
+            self.readRoutes(routes)
+        self.distributeIPs()
 
     def readGraph(self, filename):
         self.g = nx.read_edgelist(filename)
@@ -195,12 +203,11 @@ class GraphGen():
                 if cost[iface] >= 20000:
                     forward = 0
                 output = 'ct%s %s %s %d\n' % (enclave, prefix, forward, cost[iface])
-                fh.write(output)            
+                fh.write(output)
         fh.close()
-        
 
-    def writePaths(self, filename):
-        fh = open(filename, 'w')
+
+    def getPaths(self):
         e_nodes = nx.get_node_attributes(self.g, 'ifs')
 
         paths = {}
@@ -219,7 +226,16 @@ class GraphGen():
                         prefix = re.search('[0-9]+', iface).group(0)
                         newPath.insert(0, "10.%s.0.0/16" % prefix)
                         paths[node].append(newPath)
-                    
+
+        return paths
+
+
+    def writePaths(self, filename):
+        fh = open(filename, 'w')
+        e_nodes = nx.get_node_attributes(self.g, 'ifs')
+
+        paths = self.getPaths()
+
         for node in e_nodes:
             for path in paths[node]:
                 path_line = ", ".join(path)
@@ -276,15 +292,7 @@ def main():
     parser.add_argument('--write-paths', dest='writePaths', default="", help='Write enclave routing paths to the specified file')
     args = parser.parse_args()
 
-    gen = GraphGen()
-    gen.readGraph(args.infile)
-    gen.generateIFs()
-    gen.generateIPs()
-    gen.distributeIFs()
-    if args.routes != None:
-        gen.readRoutes(args.routes)
-        
-    gen.distributeIPs()
+    gen = GraphGen(args.infile, args.routes)
 
     if args.writeRoutes:
         gen.writeRoutes('enclave.routes')
