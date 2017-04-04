@@ -106,7 +106,7 @@ class ClickGen():
             i = 0
             for router in in_routers:
                 r = (int(re.search('[0-9]+', router).group(0)))
-                self.fh.write("out%d :: SetVLANAnno(${vlan%d}) -> ${out_if%d};\n"
+                self.fh.write("out%d :: VLANEncap(${vlan%d}) -> ${out_if%d};\n"
                               % (i + 1, r, r))
                 i = i + 1
         
