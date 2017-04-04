@@ -1,0 +1,11 @@
+setup.cfg
+GraphGen.egg-info/PKG-INFO
+GraphGen.egg-info/SOURCES.txt
+GraphGen.egg-info/dependency_links.txt
+GraphGen.egg-info/requires.txt
+GraphGen.egg-info/top_level.txt
+graphgen/__init__.py
+graphgen/addTTL.py
+graphgen/clickGen.py
+graphgen/graphGen.py
+graphgen/nsGen.py
