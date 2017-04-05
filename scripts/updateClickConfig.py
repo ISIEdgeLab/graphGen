@@ -1,6 +1,6 @@
 #!/bin/python
 import sys, time
-import logging
+import logging, os
 import netaddr as na
 import netifaces as ni
 import json
@@ -150,6 +150,32 @@ class ClickConfig(object):
         self.gws = []
         self.routes = {}
 
+        if self.useDPDK:
+            self.installDPDK()
+        
+    def installDPDK(self):
+        if os.path.exists(self.input_file):
+            return
+        out = open("/tmp/dpdk_config.out", "w")
+        err = open("/tmp/dpdk_config.err", "w")
+        os.environ["PATH"] += os.pathsep + '/proj/edgect/share/dpdk/bin'
+        
+        check_call("install-dpdk.sh", stdout=out, stderr=err)
+        check_call("install-fastclick.sh", stdout=out, stderr=err)
+
+        fh_inputs = open(self.input_file, "w")
+        check_call("getifaces.py", stdout=fh_inputs, stderr=err)
+        fh_inputs.close()
+
+        fh_routes = open(self.routes_file, "w")
+        check_call("getroutes.py", stdout=fh_routes, stderr=err)
+        fh_routes.close()
+
+        check_call("setup-dpdk.sh", stdout=out, stderr=err)
+        out.close()
+        err.close()
+        
+        
     def generate_inputs(self):
         fh_routes = open(self.routes_file)
         fh_inputs = open(self.input_file)

@@ -182,7 +182,7 @@ class ClickGen():
             for neigh in neighs:
                 if re.match("[oe][0-9]+", neigh):
                     if not self.arpLess:
-                        self.fh.write("router%d[%d] -> r%dttl_out_%s -> [0]arpq%d;\n"
+                        self.fh.write("router%d[%d] -> r%dttl_out_%s -> arpq%d;\n"
                                       % (self.in_routers[i], neighs.index(neigh), self.in_routers[i], neigh, i + 1))
                     else:
                         self.fh.write("router%d[%d] -> r%dttl_out_%s -> al%d -> out%d;\n"
