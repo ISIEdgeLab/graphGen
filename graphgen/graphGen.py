@@ -2,17 +2,17 @@
 
 import networkx as nx
 import matplotlib.pyplot as plt
-import re, csv
+import re, csv, sys
 import clickGen as cg
 import nsGen as ng
 import argparse
 
 class GraphGen():
 
-    def __init__(self, filename, routes=None):
+    def __init__(self, filename, routes=None, cmdline=[]):
         self.g = None
         self.ng = ng.NSGen(None, None, None)
-        self.cg = cg.ClickGen(None, None)
+        self.cg = cg.ClickGen(None, None, cmdline)
 
         self.readGraph(filename)
         self.generateIFs()
@@ -293,12 +293,9 @@ def main():
     parser.add_argument('--write-routes', dest='writeRoutes', default=False, help='Write routes when using multi-homing', action='store_const', const = True)
     parser.add_argument('--write-paths', dest='writePaths', default="", help='Write enclave routing paths to the specified file')
 
-
-
-
     args = parser.parse_args()
 
-    gen = GraphGen(args.infile, args.routes)
+    gen = GraphGen(args.infile, args.routes, cmdline=sys.argv)
 
     if args.writeRoutes:
         gen.writeRoutes('enclave.routes')

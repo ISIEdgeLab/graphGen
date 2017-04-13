@@ -1,10 +1,11 @@
 import networkx as nx
-import re
+import re, time
 
 class ClickGen():
-    def __init__(self, g, args):
+    def __init__(self, g, args, cmdline):
         self.g = g
         self.args = args
+        self.cmdline = cmdline
         
     def writeClick(self, g, args):
         self.g = g
@@ -33,6 +34,7 @@ class ClickGen():
         
         self.fh = open(filename, "w")
 
+        self.writePreamble()
         self.writeRouters()
         self.writeClassifiers()
         if args.useDPDK:
@@ -52,6 +54,14 @@ class ClickGen():
         self.writeLocalDelivery()
         self.fh.close()
 
+    def writePreamble(self):
+        tstr = time.asctime(time.gmtime(time.time()))
+
+        self.fh.write("// Auto generated Click Template using GraphGen/clickGen.py at %s UTC" % tstr)
+        if self.cmdline != []:
+            self.fh.write("\n// Command line: %s \n\n" % ' '.join(self.cmdline))
+
+        
     def writeClassifiers(self):
         self.fh.write("\n// Packet Classifiers\n")
         i = 1
