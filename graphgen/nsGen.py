@@ -10,13 +10,14 @@ class NSGen():
         self.g = g
         self.filename = filename
         self.args = args
-        
+
     def writeNS(self, g, filename, args):
         self.g = g
         self.filename = filename
         self.args = args
         self.fh = open(self.filename, "w")
-
+        self.useDPDK = self.args.useDPDK
+        
         # Determine number of servers and clients per enclave
         self.numServers = int(args.numServers)
         self.numClients = int(args.numClients)
@@ -34,11 +35,11 @@ class NSGen():
         self.useCrypto = args.useCrypto
     
         self.writePreamble(args.startCmd)
-        lans = self.writeEnclaveNodes("Ubuntu1404-XL710")
-        self.writeExternalNodes("Ubuntu1404-XL710")
+        lans = self.writeEnclaveNodes(self.args.os, self.args.ct_os)
+        self.writeExternalNodes(self.args.os)
         self.writeLansLinks(lans)
         self.writeIPs()
-        self.writeTeeNodes("Ubuntu1404-XL710")
+        self.writeTeeNodes(self.args.os)
     
         if args.useContainers:
             self.writeContainers()
@@ -55,7 +56,10 @@ class NSGen():
         self.fh.write("set ns [new Simulator]\n")
         self.fh.write("source tb_compat.tcl\n")
         self.fh.write("\nset magi_str \"sudo python /proj/edgect/magi/current/magi_bootstrap.py -fp /proj/edgect/magi/current/\"\n")
-        self.fh.write("\nset click_str \"/proj/edgect/exp_scripts/startClickAny.sh %s\"\n" % self.filename.split('.')[0])
+        if self.useDPDK:
+            self.fh.write("\nset click_str \"/proj/edgect/exp_scripts/startClickDPDK.sh %s\"\n" % self.filename.split('.')[0])
+        else:
+            self.fh.write("\nset click_str \"/proj/edgect/exp_scripts/startClickAny.sh %s\"\n" % self.filename.split('.')[0])
 
         if self.args.writeRoutes:
             self.fh.write("\nset ct_str \"/proj/edgect/exp_scripts/updateRoutesAny.sh %s\"\n" % self.filename.split('.')[0])
@@ -68,13 +72,18 @@ class NSGen():
 
         if not self.args.useContainers:
             self.fh.write("\n# Create hardware types\n")
-            self.fh.write("tb-make-soft-vtype click_type {dl380g3 MicroCloud}\n")
+
+            if self.useDPDK:
+                self.fh.write("tb-make-soft-vtype click_type {sm dl380g3 MicroCloud}\n")
+            else:
+                self.fh.write("tb-make-soft-vtype click_type {dl380g3 MicroCloud}\n")
+
             self.fh.write("tb-make-soft-vtype ct_type {sm dl380g3}\n")
             self.fh.write("tb-make-soft-vtype crypto_type {sm dl380g3 MicroCloud}\n")
             self.fh.write("tb-make-soft-vtype cli_server_type {sm dl380g3 MicroCloud}\n")
                       
         
-    def writeEnclaveNodes(self, os):
+    def writeEnclaveNodes(self, os, ct_os):
         ''' Write the enclave nodes, providing the specified os, number of server 
         and number of clients per enclave '''
 
@@ -116,7 +125,7 @@ class NSGen():
 
             # Write CT and Crypto nodes
             self.fh.write("set ct%d [$ns node]\n" % enc)
-            self.fh.write("tb-set-node-os $ct%d %s\n" % (enc, os))
+            self.fh.write("tb-set-node-os $ct%d %s\n" % (enc, ct_os))
             self.fh.write("tb-set-hardware $ct%d ct_type\n" % (enc))
 
             if self.useCrypto:
@@ -137,7 +146,11 @@ class NSGen():
 
         # Write the control node and vrouter node
         self.fh.write("\nset vrouter [$ns node]\n")
-        self.fh.write("tb-set-node-os $vrouter Ubuntu1204-64-CT-CL2\n")
+        if self.useDPDK:
+            self.fh.write("tb-set-node-os $vrouter Ubuntu1604-STD\n")
+        else:
+            self.fh.write("tb-set-node-os $vrouter Ubuntu1204-64-CT-CL2\n")
+
         self.fh.write("tb-set-hardware $vrouter click_type\n")
         
         self.fh.write("set control [$ns node]\n")

@@ -290,6 +290,9 @@ def main():
     parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
     parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP) CURRENTLY UNAVAILABLE', action='store_const', const=True)
     parser.add_argument('--write-paths', dest='writePaths', default="", help='Write enclave routing paths to the specified file')
+    parser.add_argument('--CT-OS', dest='ct_os', default="Ubuntu1404-64-STD", help="Specify you're own OS for CT nodes")
+    parser.add_argument('--default-OS', dest='os', default="Ubuntu1404-64-STD", help="Default OS for non CT nodes")
+
     args = parser.parse_args()
 
     gen = GraphGen(args.infile, args.routes)
