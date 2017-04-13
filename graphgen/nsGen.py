@@ -96,8 +96,9 @@ class NSGen():
             lstr = ""
         
             # Legacy BLAH.  If number of servers per enclave is 1, don_t add a server number
+            lstr = "ct%d" % enc
             if self.numServers == 1:
-                lstr = "server%d ct%d" % (enc, enc)
+                lstr = "%s server%d" % (lstr, enc)
                 self.fh.write("set server%d [$ns node]\n" % enc)
                 self.fh.write("tb-set-hardware $server%d cli_server_type\n" % enc)
                 if not self.args.useContainers:
@@ -105,14 +106,11 @@ class NSGen():
 
             else:
                 for x in range(self.numServers):
-                    if x == 0:
-                        lstr = "server%d%d ct%d" % (enc, x + 1, enc)
-                    else:
-                        lstr = "%s server%d%d ct%d" % (lstr, enc, x + 1, enc)
-                        self.fh.write("set server%d%d [$ns node]\n" % (enc, x + 1))
-                        self.fh.write("tb-set-hardware $server%d%d cli_server_type\n" % (enc, x + 1))
-                        if not self.args.useContainers:
-                            self.fh.write("tb-set-node-os $server%d%d %s\n" % (enc, x + 1, os))
+                    lstr = "%s server%d%d" % (lstr, enc, x + 1)
+                    self.fh.write("set server%d%d [$ns node]\n" % (enc, x + 1))
+                    self.fh.write("tb-set-hardware $server%d%d cli_server_type\n" % (enc, x + 1))
+                    if not self.args.useContainers:
+                        self.fh.write("tb-set-node-os $server%d%d %s\n" % (enc, x + 1, os))
 
 
             # Write Client nodes
@@ -128,6 +126,7 @@ class NSGen():
             self.fh.write("tb-set-node-os $ct%d %s\n" % (enc, ct_os))
             self.fh.write("tb-set-hardware $ct%d ct_type\n" % (enc))
 
+            
             if self.useCrypto:
                 c = 1
                 for neighbor in self.g.neighbors(enclave):
