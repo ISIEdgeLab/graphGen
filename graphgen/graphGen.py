@@ -276,22 +276,25 @@ def main():
     parser.add_argument('-d', dest='draw_output', help='Draw the given input file and store in the given destination')
     parser.add_argument('-n', dest='ns_file', help='Write an ns file as well')
     parser.add_argument('-o', dest='output', default='vrouter.template', help='Specify output for click template (default: vrouter.template)')
-    parser.add_argument('-a', dest='arp', default=False, action='store_const', const=True, help='Configure click to use ARP')
     parser.add_argument('-r', dest='routes', type=str, help='Specify input routes in the given ssv file')
     parser.add_argument('--bandwidth', dest='bw', default='1Gbps', help='Default Bandwidth for each link (1Gbps)')
     parser.add_argument('--delay', dest='delay', default='0ms', help='Default Delay for each link (0ms)')
     parser.add_argument('--loss', dest='loss', default='0.0', help='Default Loss rate for each link (0.0)')
     parser.add_argument('--set-startcmd', dest='startCmd', default="", help='Set a default start command to run on all nodes')
+    parser.add_argument('--CT-OS', dest='ct_os', default="Ubuntu1404-64-STD", help="Specify you're own OS for CT nodes")
+    parser.add_argument('--default-OS', dest='os', default="Ubuntu1404-64-STD", help="Default OS for non CT nodes")
+    parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
+    parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
+    parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)', action='store_const', const=True)
+    parser.add_argument('--enable-ARP', dest='arp', default=False, action='store_const', const=True, help='Configure click to use ARP')
     parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
     parser.add_argument('--disable-containers', dest='useContainers', default=True, help='Disable Containerization', action='store_const', const=False)
     parser.add_argument('--disable-crypto-nodes', dest='useCrypto', default=True, help='Do not add any crypto nodes to enclaves', action='store_const', const=False)
     parser.add_argument('--write-routes', dest='writeRoutes', default=False, help='Write routes when using multi-homing', action='store_const', const = True)
-    parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
-    parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
-    parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP) CURRENTLY UNAVAILABLE', action='store_const', const=True)
     parser.add_argument('--write-paths', dest='writePaths', default="", help='Write enclave routing paths to the specified file')
-    parser.add_argument('--CT-OS', dest='ct_os', default="Ubuntu1404-64-STD", help="Specify you're own OS for CT nodes")
-    parser.add_argument('--default-OS', dest='os', default="Ubuntu1404-64-STD", help="Default OS for non CT nodes")
+
+
+
 
     args = parser.parse_args()
 
