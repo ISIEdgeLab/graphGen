@@ -6,6 +6,14 @@ class ClickGen():
         self.g = g
         self.args = args
         self.cmdline = cmdline
+
+    def getCapitalLetters(self, in_str):
+        out_str = ""
+        for c in in_str:
+            if c.isupper():
+                out_str += c
+
+        return out_str
         
     def writeClick(self, g, args):
         self.g = g
@@ -24,6 +32,8 @@ class ClickGen():
                 else:
                     self.in_routers.append(int(edge[0]))
         self.in_routers.sort()
+        self.g_in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
+        self.g_in_routers.sort(key=lambda x: int(re.search('[0-9]+', x[0]).group(0)))
 
         self.arpLess = True
         self.useDPDK = args.useDPDK
@@ -65,35 +75,40 @@ class ClickGen():
     def writeClassifiers(self):
         self.fh.write("\n// Packet Classifiers\n")
         i = 1
-        for node in nx.get_node_attributes(self.g, 'in_routers'):
-            self.fh.write("c%d :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);\n"
-                          % i)
-            i = i + 1
+        in_routers = self.g_in_routers
+        # Create classifiers
+        for nodes in in_routers:
+            for node in nodes:
+                self.fh.write("c%d :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);\n"
+                              % int(re.search('[0-9]+', node).group(0)))
+                i = i + 1
         self.fh.write("chost :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);\n")
 
     def writeVLANMultiplexing(self):
         self.fh.write("\n// VLAN Multiplexing\n")
-        in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
-        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        in_routers = self.g_in_routers
         vlanstr = ""
-        for router in in_routers:
-            vlanstr = "%s, VLAN ${vlan%d}" % (vlanstr, (int(re.search('[0-9]+', router).group(0))))
+        for router_list in in_routers:
+            for router in router_list:
+                vlanstr = "%s, VLAN ${vlan%d}" % (vlanstr, (int(re.search('[0-9]+', router).group(0))))
         vlanstr = vlanstr[2:]
         self.fh.write("vlanmux :: VlanSwitch(%s);\n" % vlanstr)
     
     def writePacketArrival(self):
         self.fh.write("\n// Packet Arrival\n")
-        in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
-        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        in_routers = self.g_in_routers
         if self.useDPDK:
             self.fh.write("$DPDKArrival\n")
 
             i = 0
-            for router in in_routers:
-                self.fh.write("vlanmux[%d] -> c%d;\n" % (i, (int(re.search('[0-9]+', router).group(0)))))
-                i = i + 1
+            # FIX DO THIS RIGHT!  We'll start with just the standard mode
+            for router_list in in_routers:
+                for router in router_list:
+                    self.fh.write("vlanmux[%d] -> c%d;\n" % (i, int(re.search('[0-9]+', router).group(0))))
+                    i = i + 1
                             
         else:
+            # FIX THIS TOO, for MULTI HOMING
             c = 1
             for router in in_routers:
                 self.fh.write("FromDevice(${if%d}) -> c%d;\n" % (int(re.search('[0-9]+', router).group(0)), c))
@@ -109,18 +124,19 @@ class ClickGen():
         
     def writePacketDeparture(self):
         self.fh.write("\n// Packet Departure\n")
-        in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
-        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        in_routers = self.g_in_routers
         if self.useDPDK:
             self.fh.write("$DPDKDeparture\n")
             i = 0
-            for router in in_routers:
-                r = (int(re.search('[0-9]+', router).group(0)))
-                self.fh.write("out%d :: VLANEncap(${vlan%d}) -> ${out_if%d};\n"
-                              % (i + 1, r, r))
-                i = i + 1
+            for router_list in in_routers:
+                for router in router_list:
+                    r = (int(re.search('[0-9]+', router).group(0)))
+                    self.fh.write("out%d :: VLANEncap(${vlan%d}) -> ${out_if%d};\n"
+                                  % (i + 1, r, r))
+                    i = i + 1
         
         else:
+            # FIX NON DPDK
             c = 1
             for router in in_routers:
                 self.fh.write("out%d :: ThreadSafeQueue() -> ToDevice(${if%d}, BURST 64);\n"
@@ -135,24 +151,30 @@ class ClickGen():
     def writeARPHandler(self):
         self.fh.write("\n// Handle ARP\n")
         in_routers = list(nx.get_node_attributes(self.g, 'in_routers').values())
-        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
-        self.fh.write("arpt :: Tee(%d);\n\n" % (len(in_routers) + 1))
+        in_routers.sort(key=lambda x: int(re.search('[0-9]+', x[0]).group(0)))
+        t = 1
+        for router_list in in_routers:
+            t = t + len(router_list)
+        
+        self.fh.write("arpt :: Tee(%d);\n\n" % t)
         i = 1
-        for in_router in in_routers:
-            c = int(re.search('[0-9]+', in_router).group(0))
-            if self.args.useDPDK:
-                self.fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d_ip} ${if%d_eth}) -> out%d;\n"
-                              % (i, i, c, c, i))
-                self.fh.write("arpq%d :: ARPQuerier(${if%d_ip}, ${if%d_eth}) -> out%d;\n"
-                              % (i, c, c, i))
-            else:
-                self.fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d}:ip ${if%d}:eth) -> out%d;\n"
-                              % (i, i, c, c, i))
-                self.fh.write("arpq%d :: ARPQuerier(${if%d}:ip, ${if%d}:eth) -> out%d;\n"
-                              % (i, c, c, i))
-            self.fh.write("c%d[2] -> arpt;\n" % i)
-            self.fh.write("arpt[%d] -> [1]arpq%d;\n\n" % (i - 1, c))
-            i = i + 1
+        # FIX HTIS TOO
+        for router_list in in_routers:
+            for router in router_list:
+                c = int(re.search('[0-9]+', router).group(0))
+                if self.args.useDPDK:
+                    self.fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d_ip} ${if%d_eth}) -> out%d;\n"
+                                  % (c, c, c, c, c))
+                    self.fh.write("arpq%d :: ARPQuerier(${if%d_ip}, ${if%d_eth}) -> out%d;\n"
+                                  % (c, c, c, c))
+                else:
+                    self.fh.write("c%d[1] -> ar%d :: ARPResponder(${if%d}:ip ${if%d}:eth) -> out%d;\n"
+                                  % (i, i, c, c, i))
+                    self.fh.write("arpq%d :: ARPQuerier(${if%d}:ip, ${if%d}:eth) -> out%d;\n"
+                                  % (i, c, c, i))
+                self.fh.write("c%d[2] -> arpt;\n" % c)
+                self.fh.write("arpt[%d] -> [1]arpq%d;\n\n" % (i - 1, c))
+                i = i + 1
 
         self.fh.write("chost[1] -> c1;\n")
         self.fh.write("chost[2] -> arpt;\n")
@@ -177,24 +199,32 @@ class ClickGen():
 
     def writeDropPacketsOnRouters(self):
         self.fh.write("\n// Send IP Packets to Routers\n")
-        i = 0
-        for router in self.in_routers:
-            self.fh.write("c%d[0] -> Strip(14) -> CheckIPHeader(0) -> router%s;\n"
-                          % (i + 1, router))
-            i = i + 1
+        in_routers = nx.get_node_attributes(self.g, 'in_routers')
+        for router, router_list in in_routers.iteritems():
+            for router_iface in router_list:
+                iface = int(re.search('[0-9]+', router_iface).group(0))
+                self.fh.write("c%d[0] -> Strip(14) -> CheckIPHeader(0) -> router%s;\n"
+                              % (iface, router))
         self.fh.write("chost[0] -> Strip(14) -> CheckIPHeader(0) -> router%d;\n" % (self.in_routers[0]))
              
     def writeRoutersToInterfaces(self):
-        numInputs = len(nx.get_node_attributes(self.g, 'in_routers'))
+        in_routers = nx.get_node_attributes(self.g, 'in_routers')
+        numInputs = len(in_routers)
         self.fh.write("\n// Send out packets to Interfaces\n")
+        tmp_list = list(set(self.in_routers))
         for i in range(numInputs):
-            neighs = list(nx.all_neighbors(self.g, str(self.in_routers[i])))
+            neighs = list(nx.all_neighbors(self.g, str(tmp_list[i])))
+            neighs.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+            c = 0
             for neigh in neighs:
                 if re.match("[oe][0-9]+", neigh):
                     if not self.arpLess:
+                        inputs = in_routers[str(tmp_list[i])]
                         self.fh.write("router%d[%d] -> r%dttl_out_%s -> arpq%d;\n"
-                                      % (self.in_routers[i], neighs.index(neigh), self.in_routers[i], neigh, i + 1))
+                                      % (tmp_list[i], neighs.index(neigh), tmp_list[i], neigh, int(re.search('[0-9]+', inputs[c]).group(0))))
+                        c = c + 1
                     else:
+                        #fix this later, see above
                         self.fh.write("router%d[%d] -> r%dttl_out_%s -> al%d -> out%d;\n"
                                       % (self.in_routers[i], neighs.index(neigh), self.in_routers[i], neigh, i + 1, i + 1))
 
@@ -237,14 +267,16 @@ class ClickGen():
             if edge in pull_elements:
                 for element in pull_elements[edge]:
                     tokens = element.split('(')
-                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, tokens[0], element))
-                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, tokens[0], element))
+                    element_short = self.getCapitalLetters(tokens[0])
+                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, element_short, element))
+                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, element_short, element))
             
             if edge in push_elements:    
                 for element in push_elements[edge]:
                     tokens = element.split('(')
-                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, tokens[0], element))
-                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, tokens[0], element))
+                    element_short = self.getCapitalLetters(tokens[0])
+                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e0, e1, element_short, element))
+                    self.fh.write("link_%d_%d_%s :: %s;\n" % (e1, e0, element_short, element))
 
             if edge in tees:
                 self.fh.write("link_%d_%d_tee :: Tee(2);\n" % (e0, e1))
@@ -291,10 +323,10 @@ class ClickGen():
             last_str = ""
             middle_str = ""
             for iface,nhop in ifaces.iteritems():
-                if node in in_routers and in_routers[node] == iface:
+                if node in in_routers and iface in in_routers[node]:
                     last_str = "%s,\n                         ${%s_16} ${%s_gw} %d" % (last_str, iface, iface, neighbors.index(nhop))
                     if self.args.useDPDK:
-                        middle_str = "${%s_ip} %d" % (iface, len(neighbors))
+                        middle_str = "${%s_ip} %d,\n                         %s" % (iface, len(neighbors), middle_str)
                     else:
                         middle_str = "${%s}:ip %d" % (iface, len(neighbors))
                                                 
@@ -306,6 +338,8 @@ class ClickGen():
             last_str = "%s);\n\n" % last_str
             if middle_str == "":
                 last_str = last_str[27:]
+            else:
+                middle_str = middle_str.strip(',\n ')
             self.fh.write(first_str)
             self.fh.write(middle_str)
             self.fh.write(last_str)
@@ -325,8 +359,8 @@ class ClickGen():
                 if re.match("[oe][0-9]+", ne):
                     continue
 
-                pull_elements = self.g[n][ne]['s_elements']
-                push_elements = self.g[n][ne]['l_elements']
+                pull_elements = self.g[n][ne]['l_elements']
+                push_elements = self.g[n][ne]['s_elements']
 
                 push_str = "->"
                 pull_str = "->"
@@ -338,11 +372,13 @@ class ClickGen():
                 
                 for element in pull_elements:
                     tokens = element.split("(")
-                    pull_str = "%s link_%s_%s_%s ->" % (pull_str, n, ne, tokens[0])
+                    element_short = self.getCapitalLetters(tokens[0])
+                    pull_str = "%s link_%s_%s_%s ->" % (pull_str, n, ne, element_short)
                 
                 for element in push_elements:
                     tokens = element.split("(")
-                    push_str = "%s link_%s_%s_%s ->" % (push_str, n, ne, tokens[0])
+                    element_short = self.getCapitalLetters(tokens[0])
+                    push_str = "%s link_%s_%s_%s ->" % (push_str, n, ne, element_short)
 
                 if 'tee' in self.g[n][ne]:
                     tee_str = "-> link_%s_%s_tee ->" % (n, ne)
@@ -405,12 +441,13 @@ class ClickGen():
         
         self.fh.write("\n// Unknown packets to their death\n")
         in_rtr = list(nx.get_node_attributes(self.g, 'in_routers').values())
-        in_rtr.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
-        for router in in_rtr:
-            pos = in_rtr.index(router) + 1
-            self.fh.write("c%d[3] -> Print(\"${if%d} Non IP\") -> Discard;\n"
-                          % (pos, int(re.search('[0-9]+', router).group(0))))
-
+        in_rtr.sort(key=lambda x: int(re.search('[0-9]+', x[0]).group(0)))
+        for router_list in in_rtr:
+            for router in router_list:
+                pos = int(re.search('[0-9]+', router).group(0))
+                self.fh.write("c%d[3] -> Print(\"${if%d} Non IP\") -> Discard;\n"
+                              % (pos, pos))
+                
         self.fh.write("chost[3] -> Print(\"Host Non IP\") -> Discard;\n")
                  
 
