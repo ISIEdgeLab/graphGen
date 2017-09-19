@@ -132,7 +132,7 @@ class ClickGen():
                 for router in router_list:
                     r = (int(re.search('[0-9]+', router).group(0)))
                     self.fh.write("out%d :: VLANEncap(${vlan%d}) -> ${out_if%d};\n"
-                                  % (i + 1, r, r))
+                                  % (r, r, r))
                     i = i + 1
         
         else:
@@ -319,6 +319,7 @@ class ClickGen():
             ifaces = routes[node]['ifaces']
             ips = routes[node]['ips']
             neighbors = list(nx.all_neighbors(self.g, node))
+            neighbors.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
             first_str = "router%s :: RadixIPLookup(" % node
             last_str = ""
             middle_str = ""
@@ -355,6 +356,8 @@ class ClickGen():
             if re.match("[oe][0-9]+", n):
                 continue
             neighbors = list(nx.all_neighbors(self.g, n))
+            neighbors.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+
             for ne in neighbors:
                 if re.match("[oe][0-9]+", ne):
                     continue
