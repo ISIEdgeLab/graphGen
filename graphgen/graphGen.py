@@ -41,10 +41,12 @@ class GraphGen():
                 
     def drawGraph(self, filename="graph.png"):
         pos = nx.spring_layout(self.g)
+        #pos=nx.graphviz_layout(self.g)
         #nx.draw_networkx_nodes(self.g, pos)
         #nx.draw_networkx_edges(self.g, pos)
         nx.draw_networkx(self.g, pos, font_size=10, node_color='k', font_color='w')
         plt.axis('off')
+        #nx.write_dot(self.g, "graph.dot");
         plt.savefig(filename)
 
     def generateIFs(self):
@@ -81,7 +83,10 @@ class GraphGen():
                     e_links[node].append(elink)
                 c = c + 1
 
-                routers[x] = toAdd
+                if x not in routers:
+                    routers[x] = [toAdd]
+                else:
+                    routers[x].append(toAdd)
                                 
         nx.set_node_attributes(self.g, 'in_routers', routers)
         nx.set_node_attributes(self.g, 'enclaves', enclaves)
@@ -192,6 +197,7 @@ class GraphGen():
         routes = nx.get_node_attributes(self.g, 'routes')
         e_nodes = nx.get_node_attributes(self.g, 'ifs')
         in_routers = nx.get_node_attributes(self.g, 'in_routers')
+        elinks = nx.get_node_attributes(self.g, 'elinks')
         
         for node in e_nodes:
             route = routes[node]['ifaces']
@@ -199,12 +205,18 @@ class GraphGen():
             for iface, forward in route.iteritems():
                 enclave = re.search('[0-9]+', node).group(0)
                 prefix = re.search('[0-9]+', iface).group(0)
-                forward = re.search('[0-9]+', in_routers[forward]).group(0)
+                for link in elinks[node]:
+                    #elinks is a 3 tuple of (node, interface, forwarder)
+                    if link[1] in in_routers[forward]:
+                        forward = re.search('[0-9]+', link[1]).group(0)
+                        break;
+                
                 if cost[iface] >= 20000:
                     forward = 0
                 output = 'ct%s %s %s %d\n' % (enclave, prefix, forward, cost[iface])
                 fh.write(output)
         fh.close()
+
 
 
     def getPaths(self):
@@ -309,3 +321,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
