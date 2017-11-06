@@ -1,6 +1,11 @@
 #! /usr/bin/env python
 
 import networkx as nx
+
+import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 import re, csv, sys
 import clickGen as cg
@@ -325,7 +330,7 @@ def main():
     parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
     parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
     parser.add_argument('--access-link-constraints', dest='inConstraints', default=False, action='store_const', const=True, help='Add link constraints to the access links for the vrouter')
-    parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)', action='store_const', const=True)
+    parser.add_argument('--enable-dpdk', dest='useDPDK', default=True, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)', action='store_const', const=True)
     parser.add_argument('--enable-ARP', dest='arp', default=False, action='store_const', const=True, help='Configure click to use ARP')
     parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
     parser.add_argument('--disable-containers', dest='useContainers', default=True, help='Disable Containerization', action='store_const', const=False)
