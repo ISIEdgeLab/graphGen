@@ -200,11 +200,26 @@ class ClickGen():
     def writeDropPacketsOnRouters(self):
         self.fh.write("\n// Send IP Packets to Routers\n")
         in_routers = nx.get_node_attributes(self.g, 'in_routers')
+        
+        bw = self.args.bw
+        delay = self.args.delay
+        drop = self.args.loss
+        qs = 1000
+        
         for router, router_list in in_routers.iteritems():
             for router_iface in router_list:
                 iface = int(re.search('[0-9]+', router_iface).group(0))
-                self.fh.write("c%d[0] -> Strip(14) -> CheckIPHeader(0) -> router%s;\n"
-                              % (iface, router))
+                if self.args.inConstraints:
+                    # should check if we have overrides
+                    self.fh.write("link_in_%d_queue :: ThreadSafeQueue(%d);\n" % (iface, qs))
+                    self.fh.write("link_in_%d_bw :: LinkUnqueue(%s, %s);\n" % (iface, delay, bw))
+                    self.fh.write("link_in_%d_loss :: RandomSample(DROP %s);\n" % (iface, drop))
+                    
+                    self.fh.write("c%d[0] -> Strip(14) -> CheckIPHeader(0) -> link_in_%d_queue -> CoDel() -> link_in_%d_loss -> link_in_%d_bw -> router%s;\n"
+                                  % (iface, iface, iface, iface, router))
+                else:
+                    self.fh.write("c%d[0] -> Strip(14) -> CheckIPHeader(0) -> router%s;\n"
+                                  % (iface, router))
         self.fh.write("chost[0] -> Strip(14) -> CheckIPHeader(0) -> router%d;\n" % (self.in_routers[0]))
              
     def writeRoutersToInterfaces(self):
@@ -212,6 +227,12 @@ class ClickGen():
         numInputs = len(in_routers)
         self.fh.write("\n// Send out packets to Interfaces\n")
         tmp_list = list(set(self.in_routers))
+
+        bw = self.args.bw
+        delay = self.args.delay
+        drop = self.args.loss
+        qs = 1000
+        
         for i in range(numInputs):
             neighs = list(nx.all_neighbors(self.g, str(tmp_list[i])))
             neighs.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
@@ -220,8 +241,17 @@ class ClickGen():
                 if re.match("[oe][0-9]+", neigh):
                     if not self.arpLess:
                         inputs = in_routers[str(tmp_list[i])]
-                        self.fh.write("router%d[%d] -> r%dttl_out_%s -> arpq%d;\n"
-                                      % (tmp_list[i], neighs.index(neigh), tmp_list[i], neigh, int(re.search('[0-9]+', inputs[c]).group(0))))
+                        iface = int(re.search('[0-9]+', inputs[c]).group(0))
+                        if self.args.inConstraints:
+                            self.fh.write("link_out_%d_queue :: ThreadSafeQueue(%d);\n" % (iface, qs))
+                            self.fh.write("link_out_%d_bw :: LinkUnqueue(%s, %s);\n" % (iface, delay, bw))
+                            self.fh.write("link_out_%d_loss :: RandomSample(DROP %s);\n" % (iface, drop))
+                            
+                            self.fh.write("router%d[%d] -> r%dttl_out_%s -> link_out_%d_queue -> CoDel() -> link_out_%d_loss -> link_out_%d_bw -> arpq%d;\n"
+                                          % (tmp_list[i], neighs.index(neigh), tmp_list[i], neigh, iface, iface, iface, iface))
+                        else:
+                            self.fh.write("router%d[%d] -> r%dttl_out_%s -> arpq%d;\n"
+                                          % (tmp_list[i], neighs.index(neigh), tmp_list[i], neigh, int(re.search('[0-9]+', inputs[c]).group(0))))
                         c = c + 1
                     else:
                         #fix this later, see above

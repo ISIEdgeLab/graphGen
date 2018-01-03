@@ -116,6 +116,7 @@ class RouteUpdate(object):
             ip = na.IPAddress(addrs[ni.AF_INET][0]['addr'])
             net = na.IPNetwork('%s/255.255.0.0' % ip)
             route_to_add = 'sudo ip route add %s via %s dev %s' % (net.cidr, (ip - 1), iface)
+            print route_to_add
             check_call(route_to_add.split(),  stdout = PIPE, stderr = PIPE)
 
 

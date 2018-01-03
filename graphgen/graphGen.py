@@ -62,18 +62,28 @@ class GraphGen():
                 if re.match("o[0-9]+", node):
                     ifs[node] = ['if%s' % node]
                     others[node] = ['if%s' % node]
+
+        nx.set_node_attributes(self.g, 'enclaves', enclaves)
                     
         elist = list(enclaves)
         elist.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        
+        # find primary link if specified
+        self.checkPrimaries()
+        primaries = nx.get_edge_attributes(self.g, 'primary')
+        
         mh_counter = 50
         for node in elist:
-            c = 1
             neighbors = self.g.neighbors(node)
             neighbors.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
             for x in neighbors:
-                toAdd = "if%d" % int(re.search('[0-9]+', node).group(0))
-                if c > 1:
+                link = (node, x)
+                link_rev = (x, node)
+                if link in primaries or link_rev in primaries:
+                    toAdd = "if%d" % int(re.search('[0-9]+', node).group(0))
+                else:
                     toAdd = "if%d" % (mh_counter + int(re.search('[0-9]+', node).group(0)))
+                    
                 elink = (node, toAdd, x)
                 if node not in ifs:
                     ifs[node] = [toAdd]
@@ -81,7 +91,6 @@ class GraphGen():
                 else:
                     ifs[node].append(toAdd)
                     e_links[node].append(elink)
-                c = c + 1
 
                 if x not in routers:
                     routers[x] = [toAdd]
@@ -89,11 +98,29 @@ class GraphGen():
                     routers[x].append(toAdd)
                                 
         nx.set_node_attributes(self.g, 'in_routers', routers)
-        nx.set_node_attributes(self.g, 'enclaves', enclaves)
         nx.set_node_attributes(self.g, 'others', others)
         nx.set_node_attributes(self.g, 'ifs', ifs)
         nx.set_node_attributes(self.g, 'elinks', e_links)
 
+    def checkPrimaries(self):
+        primaries = nx.get_edge_attributes(self.g, 'primary')
+        enclaves = nx.get_node_attributes(self.g, 'enclaves')
+        elist = list(enclaves)
+        elist.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
+        
+        for node in elist:
+            neighbors = self.g.neighbors(node)
+            hasPrimary = False
+            for neigh in neighbors:
+                link1 = (node, neigh)
+                link2 = (neigh, node)
+                if link1 in primaries or link2 in primaries:
+                    hasPrimary = True
+                    break
+            if not hasPrimary and len(neighbors) > 0:
+                self.g[node][neighbors[0]]['primary'] = True
+            
+        
     def generateIPs(self):
         ips = {}
         for node in nx.nodes(self.g):
@@ -297,6 +324,7 @@ def main():
     parser.add_argument('--default-OS', dest='os', default="Ubuntu1404-64-STD", help="Default OS for non CT nodes")
     parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
     parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
+    parser.add_argument('--access-link-constraints', dest='inConstraints', default=False, action='store_const', const=True, help='Add link constraints to the access links for the vrouter')
     parser.add_argument('--enable-dpdk', dest='useDPDK', default=False, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)', action='store_const', const=True)
     parser.add_argument('--enable-ARP', dest='arp', default=False, action='store_const', const=True, help='Configure click to use ARP')
     parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
