@@ -37,7 +37,7 @@ class NSGen():
     
         self.writePreamble(args.startCmd)
         lans = self.writeEnclaveNodes(self.args.os, self.args.ct_os)
-        self.writeExternalNodes(self.args.os)
+        self.writeExternalNodes()
         self.writeLansLinks(lans)
         self.writeIPs()
         self.writeTeeNodes(self.args.os)
@@ -163,18 +163,18 @@ class NSGen():
 
         return lan_strs
 
-    def writeExternalNodes(self, os):
+    def writeExternalNodes(self):
         ''' Write any external nodes for this experiment '''
         
         self.fh.write("\n# External Nodes\n")
-        for x in range(self.numExternal):
-            self.fh.write("set ext%d [$ns node]\n" % (x + 1))
-            self.fh.write("tb-set-node-os $ext%d %s\n" % (x + 1, os))
-            self.fh.write("tb-set-hardware $ext%d cli_server_type\n" % (x + 1))
+        for extern_node in range(1, self.numExternal+1):
+            self.fh.write("set ext%d [$ns node]\n" % (extern_node))
+            self.fh.write("tb-set-node-os $ext%d %s\n" % (extern_node, self.args.os))
+            #FIXME: add options for hardware for types (extern, click, etc)
+            self.fh.write("tb-set-hardware $ext%d cli_server_type\n" % (extern_node))
 
 
     def writeLansLinks(self, lans):
-        c = 1
         self.fh.write("\n# Lans\n")
         link_str = ""
         elink_str = ""
@@ -182,41 +182,52 @@ class NSGen():
         
         enclaves = nx.get_node_attributes(self.g, 'enclaves')
         # Write the LANs for each enclave, as well as the ct-crypto link and crpyto-vrouter links
-        for lan in lans:
-            self.fh.write("set lan%d [$ns make-lan \"%s\" 1000Mb 0ms]\n" % (c, lan))
-            enclave = enclaves["e%d" % c]
-
-            if __NX_VERSION__ > 1:
-                 neighbors = [y for y in self.g.neighbors(enclave)]
-            else:
-                 neighbors = self.g.neighbors(enclave)
-
+        for lan, lan_count in zip(lans, range(1, len(lans)+1)):
+            # FIXME: lincoln, need type and format checks on inputs, requires formatting with Gbps Mbps, 0ms, etc
+            self.fh.write(
+                "set lan{0} [$ns make-lan \"{1}\" {2} {3}]\n".format(
+                    lan_count, lan, self.args.bw[:-2], self.args.delay,
+                )
+            )
+            enclave = enclaves["e{}".format(lan_count)]
             if self.useCrypto:
-                x = 1
-                for _ in neighbors:
-                    if len(neighbors) == 1:
-                        link_str = "%sset link%d [$ns duplex-link $ct%d $crypto%d 1000Mb 0.0ms DropTail]\n" % (link_str, c, c, c)
-                        elink_str = "%sset elink%d [$ns duplex-link $crypto%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, c)
-                        multiplex_str = "%stb-set-multiplexed $elink%d 1\ntb-set-noshaping $elink%d 1\n" % (multiplex_str, c, c)
+                for neighbors, num_neighbor in zip(self.g.neighbors(enclave), range(len(self.g.neighbors(enclave)))):
+                    if len(self.g.neighbors(enclave)) == 1: 
+                        link_str = "{0}set link{1} [$ns duplex-link $ct{1} $crypto{1} {2} {3} DropTail]\n".format(
+                            link_str, lan_count, self.args.bw[:-2], self.args.delay,
+                        )
+                        elink_str = "{0}set elink{1} [$ns duplex-link $crypto{1} $vrouter {2} {3} DropTail]\n".format(
+                            link_str, lan_count, self.args.bw[:-2], self.args.delay,
+                        )
+                        multiplex_str = "{0}tb-set-multiplexed $elink{1} 1\ntb-set-noshaping $elink{1} 1\n".format(
+                            multiplex_str, lan_count,
+                        )
                     else:
-                        link_str = "%sset link%d-%d [$ns duplex-link $ct%d ${crypto%d-%d} 1000Mb 0.0ms DropTail]\n" % (link_str, c, x, c, c, x)
-                        elink_str = "%sset elink%d-%d [$ns duplex-link ${crypto%d-%d} $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, x, c, x)
-                        multiplex_str = "%stb-set-multiplexed ${elink%d-%d} 1\ntb-set-noshaping ${elink%d-%d} 1\n" % (multiplex_str, c, x, c, x)
-
-                    x = x + 1
+                        link_str = "{0}set link{1}-{2} [$ns duplex-link $ct{1} $\{crypto{1}-{2}\} {3} {4} DropTail]\n".format(
+                            link_str, lan_count, num_neighbor, self.args.bw[:-2], self.args.delay,
+                        )
+                        elink_str = "{0}set elink{1}-{2} [$ns duplex-link $\{crypto{1}-{2}\} $vrouter {3} {4} DropTail]\n".format(
+                            elink_str, lan_count, num_neighbor, self.args.bw[:-2], self.args.delay,
+                        )
+                        multiplex_str = "{0}tb-set-multiplexed $\{elink{1}-{2}\} 1\ntb-set-noshaping $\{elink{1}-{2}\} 1\n".format(
+                            multiplex_str, lan_count, num_neighbor,
+                        )
             else:
-                x = 1
-                for _ in neighbors:
-                    if len(neighbors) == 1:
-                        elink_str = "%sset elink%d [$ns duplex-link $ct%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, c)
-                        multiplex_str = "%stb-set-multiplexed $elink%d 1\ntb-set-noshaping $elink%d 1\n" % (multiplex_str, c, c)
+                for neighbors, num_neighbor in zip(self.g.neighbors(enclave), range(len(self.g.neighbors(enclave)))):
+                    if len(self.g.neighbors(enclave)) == 1: 
+                        elink_str = "{0}set elink{1} [$ns duplex-link $ct{1} $vrouter {2} {3} DropTail]\n".format(
+                            elink_str, lan_count, self.args.bw[:-2], self.args.delay,
+                        )
+                        multiplex_str = "{0}tb-set-multiplexed $elink{1} 1\ntb-set-noshaping $elink{1} 1\n".format(
+                            multiplex_str, lan_count,
+                        )
                     else:
-                        elink_str = "%sset elink%d-%d [$ns duplex-link $ct%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, x, c)
-                        multiplex_str = "%stb-set-multiplexed ${elink%d-%d} 1\ntb-set-noshaping ${elink%d-%d} 1\n" % (multiplex_str, c, x, c, x)
-
-                    x = x + 1
-
-            c = c + 1
+                        elink_str = "{0}set elink{1}-{2} [$ns duplex-link $ct{1} $vrouter {2} {3} DropTail]\n".format(
+                            elink_str, lan_count, num_neighbor,
+                        )
+                        multiplex_str = "{0}tb-set-multiplexed $\{elink{1}-{2}\} 1\ntb-set-noshaping $\{elink{1}-{2}\} 1\n".format(
+                            multiplex_str, lan_count, num_neighbor,
+                        )
 
         # I (ek) try to bunch everything in the output file together for easy reading.  Thats why all the link_strs
         # and elink_strs are grouped together
@@ -230,9 +241,17 @@ class NSGen():
         
         # Write External Links
         self.fh.write("\n# External Node Links\n")
-        for x in range(self.numExternal):
-            self.fh.write("set olink%d [$ns duplex-link $vrouter $ext%d 1000Mb 0.0ms DropTail]\n" % (x + 1, x + 1))
-            self.fh.write("tb-set-multiplexed $olink%d 1\ntb-set-noshaping $olink%d\n" % (x + 1, x + 1))
+        for extern_nodes in range(1, self.numExternal+1):
+            self.fh.write(
+                "set olink{0} [$ns duplex-link $vrouter $ext{0} {1} {2} DropTail]\n".format(
+                    extern_nodes, self.args.bw[:-2], self.args.delay,
+                )
+            )
+            self.fh.write(
+                "tb-set-multiplexed $olink{0} 1\ntb-set-noshaping $olink{0}\n".format(
+                    extern_nodes,
+                )
+            )
 
     def writeIPs(self):
         self.fh.write("\n# IPS\n")

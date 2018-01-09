@@ -18,7 +18,7 @@ class GraphGen():
 
     def __init__(self, filename, routes=None, cmdline=[]):
         self.g = None
-        self.ng = ng.NSGen(None, None, None)
+        self.ng = ng.NSGen(None, None, cmdline)
         self.cg = cg.ClickGen(None, None, cmdline)
 
         self.readGraph(filename)
