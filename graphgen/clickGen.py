@@ -1,4 +1,5 @@
 import networkx as nx
+__NX_VERSION__ = int(nx.__version__.split('.')[0])
 import re, time
 
 class ClickGen():
@@ -339,7 +340,11 @@ class ClickGen():
         routes = nx.get_node_attributes(self.g, 'routes')
         node_ips = nx.get_node_attributes(self.g, 'ips')
         self.fh.write("\n// Routers\n")
-        nodes = nx.nodes(self.g)
+
+        if __NX_VERSION__ > 1:
+            nodes = nx.nodes(self.g).keys()
+        else:
+            nodes = nx.nodes(self.g)
         nodes.sort()
         in_routers = nx.get_node_attributes(self.g, 'in_routers')
     
@@ -377,7 +382,10 @@ class ClickGen():
 
     def writeLinks(self):
         self.fh.write("\n// Links\n")
-        nodes = nx.nodes(self.g)
+        if __NX_VERSION__ > 1:
+            nodes = nx.nodes(self.g).keys()
+        else:
+            nodes = nx.nodes(self.g)
         nodes.sort()
 
         useCodel = self.args.useCodel
@@ -454,7 +462,10 @@ class ClickGen():
             self.fh.write("toh :: ToHost(fake0);\n\n")
         else:
             self.fh.write("toh :: ToHost;\n\n")
-        routers = nx.nodes(self.g)
+        if __NX_VERSION__ > 1:
+            routers = nx.nodes(self.g).keys()
+        else:
+            routers = nx.nodes(self.g)
         for router in routers:
             if not re.match("[oe][0-9]+", router):
                 neighbors = list(nx.all_neighbors(self.g, str(router)))

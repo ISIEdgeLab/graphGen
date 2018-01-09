@@ -1,4 +1,6 @@
+README.md
 setup.cfg
+setup.py
 GraphGen.egg-info/PKG-INFO
 GraphGen.egg-info/SOURCES.txt
 GraphGen.egg-info/dependency_links.txt
