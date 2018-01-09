@@ -1,4 +1,5 @@
 import networkx as nx
+__NX_VERSION__ = int(nx.__version__.split('.')[0])
 import time, re
 
 ''' nsGen.py generates a NS file associated with the given graph file.  
@@ -126,11 +127,15 @@ class NSGen():
             self.fh.write("tb-set-node-os $ct%d %s\n" % (enc, ct_os))
             self.fh.write("tb-set-hardware $ct%d ct_type\n" % (enc))
 
+            if __NX_VERSION__ > 1:
+                 neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                 neighbors = self.g.neighbors(enclave)
             
             if self.useCrypto:
                 c = 1
-                for neighbor in self.g.neighbors(enclave):
-                    if len(self.g.neighbors(enclave)) == 1:
+                for _ in neighbors:
+                    if len(neighbors) == 1:
                         self.fh.write("set crypto%d [$ns node]\n" % enc)
                         self.fh.write("tb-set-node-os ${crypto%d} %s\n" % (enc, os))
                         self.fh.write("tb-set-hardware ${crypto%d} crypto_type\n" % (enc))
@@ -180,10 +185,16 @@ class NSGen():
         for lan in lans:
             self.fh.write("set lan%d [$ns make-lan \"%s\" 1000Mb 0ms]\n" % (c, lan))
             enclave = enclaves["e%d" % c]
+
+            if __NX_VERSION__ > 1:
+                 neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                 neighbors = self.g.neighbors(enclave)
+
             if self.useCrypto:
                 x = 1
-                for neighbors in self.g.neighbors(enclave):
-                    if len(self.g.neighbors(enclave)) == 1: 
+                for _ in neighbors:
+                    if len(neighbors) == 1:
                         link_str = "%sset link%d [$ns duplex-link $ct%d $crypto%d 1000Mb 0.0ms DropTail]\n" % (link_str, c, c, c)
                         elink_str = "%sset elink%d [$ns duplex-link $crypto%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, c)
                         multiplex_str = "%stb-set-multiplexed $elink%d 1\ntb-set-noshaping $elink%d 1\n" % (multiplex_str, c, c)
@@ -195,8 +206,8 @@ class NSGen():
                     x = x + 1
             else:
                 x = 1
-                for neighbors in self.g.neighbors(enclave):
-                    if len(self.g.neighbors(enclave)) == 1: 
+                for _ in neighbors:
+                    if len(neighbors) == 1:
                         elink_str = "%sset elink%d [$ns duplex-link $ct%d $vrouter 1000Mb 0.0ms DropTail]\n" % (elink_str, c, c)
                         multiplex_str = "%stb-set-multiplexed $elink%d 1\ntb-set-noshaping $elink%d 1\n" % (multiplex_str, c, c)
                     else:
@@ -251,10 +262,16 @@ class NSGen():
 
             self.fh.write("tb-set-ip-lan $ct%d $lan%d 10.%d.1.100\n"
                           % (enc, enc, enc))
+
+            if __NX_VERSION__ > 1:
+                 neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                 neighbors = self.g.neighbors(enclave)
+
             if self.useCrypto:
                 x = 1
-                for neighbors in self.g.neighbors(enclave):
-                    if len(self.g.neighbors(enclave)) == 1:
+                for _ in neighbors:
+                    if len(neighbors) == 1:
                         self.fh.write("tb-set-ip-link $ct%d $link%d 10.%d.2.1\n"
                                       % (enc, enc, enc))
                         self.fh.write("tb-set-ip-link $crypto%d $link%d 10.%d.2.2\n"
@@ -272,8 +289,14 @@ class NSGen():
         for enclave in self.enclaves:
             enc = int(re.search("[0-9]+", enclave).group(0))       
             x = 1
-            for neighbors in self.g.neighbors(enclave):
-                if len(self.g.neighbors(enclave)) == 1:
+
+            if __NX_VERSION__ > 1:
+                 neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                 neighbors = self.g.neighbors(enclave)
+
+            for _ in neighbors:
+                if len(neighbors) == 1:
                     if self.useCrypto:
                         self.fh.write("tb-set-ip-link $crypto%d $elink%d 10.%d.10.1\n"
                                       % (enc, enc, enc))
@@ -341,14 +364,19 @@ class NSGen():
                           % (enc, count))
             count = count + 1
 
+            if __NX_VERSION__ > 1:
+                 neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                 neighbors = self.g.neighbors(enclave)
+
             if self.useCrypto:
-                if len(self.g.neighbors(enclave)) == 1:
+                if len(neighbors) == 1:
                     self.fh.write("tb-add-node-attribute $crypto%d containers:partition %d\n"
                                       % (enc, count))
                     count = count + 1
                 else:
                     x = 1
-                    for neighbor in self.g.neighbors(enclave):
+                    for _ in neighbors:
                         self.fh.write("tb-add-node-attribute ${crypto%d-%d} containers:partition %d\n"
                                       % (enc, x, count))
                         count = count + 1
@@ -376,12 +404,18 @@ class NSGen():
         for enclave in self.enclaves:
             enc = int(re.search("[0-9]+", enclave).group(0))
             self.fh.write("tb-add-node-attribute $ct%d containers:node_type embedded_pnode\n" % (enc))
+
+            if __NX_VERSION__ > 1:
+                 neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                 neighbors = self.g.neighbors(enclave)
+
             if self.useCrypto:
-                if len(self.g.neighbors(enclave)) == 1:
+                if len(neighbors) == 1:
                     self.fh.write("tb-add-node-attribute $crypto%d containers:node_type embedded_pnode\n" % (enc))
                 else:
                     x = 1
-                    for neighbor in self.g.neighbors(enclave):
+                    for _ in neighbors:
                         self.fh.write("tb-add-node-attribute ${crypto%d-%d} containers:node_type embedded_pnode\n" % (enc, x))
                         x = x + 1
 
@@ -421,13 +455,18 @@ class NSGen():
                 self.fh.write("tb-set-node-startcmd $ct%d \"$my_start; $magi_str\"\n"
                               % (enc))
         
+            if __NX_VERSION__ > 1:
+                 neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                 neighbors = self.g.neighbors(enclave)
+
             if self.useCrypto:
-                if len(self.g.neighbors(enclave)) == 1:
+                if len(neighbors) == 1:
                     self.fh.write("tb-set-node-startcmd $crypto%d \"$my_start; $magi_str\"\n"
                                   % (enc))
                 else:
                     x = 1
-                    for neighbor in self.g.neighbors(enclave):
+                    for _ in neighbors:
                         self.fh.write("tb-set-node-startcmd ${crypto%d-%d} \"$my_start; $magi_str\"\n"
                                       % (enc, x))
                         x = x + 1
