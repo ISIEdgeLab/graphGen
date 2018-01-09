@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 
 import networkx as nx
+# networkx 2.x is not backwards compatable with 1.x
+__NX_VERSION__ = int(nx.__version__.split('.')[0])
 
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
@@ -40,8 +42,12 @@ class GraphGen():
         for node in nx.nodes(self.g):
             if re.match("o[0-9]+",  node):
                 self.g.node[node]['external'] = True
-        nx.set_edge_attributes(self.g, 's_elements', push_elements)
-        nx.set_edge_attributes(self.g, 'l_elements', pull_elements)
+        if __NX_VERSION__ > 1:
+            nx.set_edge_attributes(self.g, push_elements, 's_elements')
+            nx.set_edge_attributes(self.g, pull_elements, 'l_elements')
+        else:
+            nx.set_edge_attributes(self.g, 's_elements', push_elements)
+            nx.set_edge_attributes(self.g, 'l_elements', pull_elements)
 
                 
     def drawGraph(self, filename="graph.png"):
@@ -68,7 +74,10 @@ class GraphGen():
                     ifs[node] = ['if%s' % node]
                     others[node] = ['if%s' % node]
 
-        nx.set_node_attributes(self.g, 'enclaves', enclaves)
+        if __NX_VERSION__ > 1:
+            nx.set_node_attributes(self.g, enclaves, 'enclaves')
+        else:
+            nx.set_node_attributes(self.g, 'enclaves', enclaves)
                     
         elist = list(enclaves)
         elist.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
@@ -79,7 +88,7 @@ class GraphGen():
         
         mh_counter = 50
         for node in elist:
-            neighbors = self.g.neighbors(node)
+            neighbors = [x for x in self.g.neighbors(node)]
             neighbors.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
             for x in neighbors:
                 link = (node, x)
@@ -102,10 +111,16 @@ class GraphGen():
                 else:
                     routers[x].append(toAdd)
                                 
-        nx.set_node_attributes(self.g, 'in_routers', routers)
-        nx.set_node_attributes(self.g, 'others', others)
-        nx.set_node_attributes(self.g, 'ifs', ifs)
-        nx.set_node_attributes(self.g, 'elinks', e_links)
+        if __NX_VERSION__ > 1:
+            nx.set_node_attributes(self.g, routers, 'in_routers')
+            nx.set_node_attributes(self.g, others, 'others')
+            nx.set_node_attributes(self.g, ifs, 'ifs')
+            nx.set_node_attributes(self.g, e_links, 'elinks')
+        else:
+            nx.set_node_attributes(self.g, 'in_routers', routers)
+            nx.set_node_attributes(self.g, 'others', others)
+            nx.set_node_attributes(self.g, 'ifs', ifs)
+            nx.set_node_attributes(self.g, 'elinks', e_links)
 
     def checkPrimaries(self):
         primaries = nx.get_edge_attributes(self.g, 'primary')
@@ -114,7 +129,7 @@ class GraphGen():
         elist.sort(key=lambda x: int(re.search('[0-9]+', x).group(0)))
         
         for node in elist:
-            neighbors = self.g.neighbors(node)
+            neighbors = [x for x in self.g.neighbors(node)]
             hasPrimary = False
             for neigh in neighbors:
                 link1 = (node, neigh)
@@ -131,7 +146,10 @@ class GraphGen():
         for node in nx.nodes(self.g):
             if not (re.match("e[0-9]+", node) or re.match("o[0-9]+", node)):
                 ips[node] = "10.100.150.%s" % node
-        nx.set_node_attributes(self.g, 'ips', ips)
+        if __NX_VERSION__ > 1:
+            nx.set_node_attributes(self.g, ips, 'ips')
+        else:
+            nx.set_node_attributes(self.g, 'ips', ips)
 
 
     def readRoutes(self, filename):
@@ -185,7 +203,10 @@ class GraphGen():
                             weights[edge] = 10000
                             
                 # NEED TO CLEAN THIS CRAP UP!    
-                nx.set_edge_attributes(g_tmp, 'weight', weights)
+                if __NX_VERSION__ > 1:
+                    nx.set_edge_attributes(g_tmp, weights, 'weight')
+                else:
+                    nx.set_edge_attributes(g_tmp, 'weight', weights)
                 paths = nx.single_source_dijkstra_path(g_tmp, node, weight='weight')
                 for src, path in paths.iteritems():
                     cost = 1
@@ -214,7 +235,10 @@ class GraphGen():
                                 cost = cost + 1
                                 
                         
-        nx.set_node_attributes(self.g, 'routes', routes)
+        if __NX_VERSION__ > 1:
+            nx.set_node_attributes(self.g, routes, 'routes')
+        else:
+            nx.set_node_attributes(self.g, 'routes', routes)
 
     def distributeIPs(self):
         routes = nx.get_node_attributes(self.g, 'routes')
@@ -222,7 +246,10 @@ class GraphGen():
             for edge in list(nx.bfs_edges(self.g, node)):
                 routes[edge[1]]['ips'][ip] = edge[0]
 
-        nx.set_node_attributes(self.g, 'routes', routes)
+        if __NX_VERSION__ > 1:
+            nx.set_node_attributes(self.g, routes, 'routes')
+        else:
+            nx.set_node_attributes(self.g, 'routes', routes)
         
     def writeRoutes(self, filename):
         fh = open(filename, 'w')
