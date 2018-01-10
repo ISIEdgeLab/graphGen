@@ -69,8 +69,8 @@ class ClickGen():
         tstr = time.asctime(time.gmtime(time.time()))
 
         self.fh.write("// Auto generated Click Template using GraphGen/clickGen.py at %s UTC" % tstr)
-        if self.cmdline != []:
-            self.fh.write("\n// Command line: %s \n\n" % ' '.join(self.cmdline))
+        if self.cmdline:
+            self.fh.write("\n// Command line: %s \n\n" % dict(self.cmdline))
 
         
     def writeClassifiers(self):
