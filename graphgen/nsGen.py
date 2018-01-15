@@ -275,14 +275,17 @@ class NSGen(object):
                     delay=default_delay,
                 )
             enclave = enclaves['e{}'.format(lan_number)]
-            enc_neigh = self.g.neighbors(enclave)
-            for neighbors, num_neighbor in zip(enc_neigh, range(len(enc_neigh))):
+            if __NX_VERSION__ > 1:
+                neighbors = [y for y in self.g.neighbors(enclave)]
+            else:
+                neighbors = self.g.neighbors(enclave)
+            for neighbor, neighbor_num in zip(neighbors, enumerate(neighbors)):
                 # shouldnt need sorting here since enclave starts with 'e'
-                edge = (neighbors, enclave)
+                edge = (neighbor, enclave)
                 edgeInBW = bws.get(edge, default_bw)
                 edgeInDelay = delays.get(edge, default_delay)
-                lan_value = str(lan_number)+'-'+str(num_neighbor) \
-                    if len(enc_neigh) > 1 else str(lan_number)
+                lan_value = str(lan_number)+'-'+str(neighbor_num) \
+                    if len(neighbors) > 1 else str(lan_number)
                 if self.useCrypto:
                     link_str = '{prefix_str}set link{lan_value} [$ns duplex-link $ct{lan_number} ' \
                         '${{crypto{lan_value}}} {bandwidth} {delay} DropTail]\n'.format(
