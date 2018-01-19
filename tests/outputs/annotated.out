@@ -1,0 +1,151 @@
+// Auto generated Click Template using GraphGen/clickGen.py at Sun Jan 14 02:44:19 2018 UTC
+// Command line: ../graphgen/graphGen.py -n ./outputs/annotated.ns -o ./outputs/annotated.out ./inputs/annotated.xnet 
+
+
+// Routers
+router1 :: RadixIPLookup(${if1_ip} 3,
+                         ${if1_16} ${if1_gw} 0,
+                         ${if2_16} 1,
+                         ${if3_16} 2,
+                         10.100.150.2 1,
+                         10.100.150.3 2,
+                         10.100.150.1 3);
+
+router2 :: RadixIPLookup(${if2_ip} 3,
+                         ${if1_16} 0,
+                         ${if2_16} ${if2_gw} 1,
+                         ${if3_16} 2,
+                         10.100.150.3 2,
+                         10.100.150.1 0,
+                         10.100.150.2 3);
+
+router3 :: RadixIPLookup(${if3_ip} 3,
+                         ${if1_16} 0,
+                         ${if2_16} 1,
+                         ${if3_16} ${if3_gw} 2,
+                         10.100.150.2 1,
+                         10.100.150.1 0,
+                         10.100.150.3 3);
+
+
+// Packet Classifiers
+c1 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+c2 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+c3 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+chost :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+
+// VLAN Multiplexing
+vlanmux :: VlanSwitch(VLAN ${vlan1}, VLAN ${vlan2}, VLAN ${vlan3});
+
+// Packet Arrival
+$DPDKArrival
+vlanmux[0] -> c1;
+vlanmux[1] -> c2;
+vlanmux[2] -> c3;
+FromHost(fake0) -> chost;
+
+// Packet Departure
+$DPDKDeparture
+out1 :: VLANEncap(${vlan1}) -> ${out_if1};
+out2 :: VLANEncap(${vlan2}) -> ${out_if2};
+out3 :: VLANEncap(${vlan3}) -> ${out_if3};
+
+// Handle ARP
+arpt :: Tee(4);
+
+c1[1] -> ar1 :: ARPResponder(${if1_ip} ${if1_eth}) -> out1;
+arpq1 :: ARPQuerier(${if1_ip}, ${if1_eth}) -> out1;
+c1[2] -> arpt;
+arpt[0] -> [1]arpq1;
+
+c2[1] -> ar2 :: ARPResponder(${if2_ip} ${if2_eth}) -> out2;
+arpq2 :: ARPQuerier(${if2_ip}, ${if2_eth}) -> out2;
+c2[2] -> arpt;
+arpt[1] -> [1]arpq2;
+
+c3[1] -> ar3 :: ARPResponder(${if3_ip} ${if3_eth}) -> out3;
+arpq3 :: ARPQuerier(${if3_ip}, ${if3_eth}) -> out3;
+c3[2] -> arpt;
+arpt[2] -> [1]arpq3;
+
+chost[1] -> c1;
+chost[2] -> arpt;
+
+// Link Traffic Shaping
+link_1_3_queue :: ThreadSafeQueue(1000);
+link_1_3_bw :: LinkUnqueue(0ms, 1Gbps);
+link_1_3_loss :: RandomSample(DROP 0.0);
+link_3_1_queue :: ThreadSafeQueue(1000);
+link_3_1_bw :: LinkUnqueue(0ms, 1Gbps);
+link_3_1_loss :: RandomSample(DROP 0.0);
+link_1_2_queue :: ThreadSafeQueue(1000);
+link_1_2_bw :: LinkUnqueue(0ms, 1Gbps);
+link_1_2_loss :: RandomSample(DROP 0.0);
+link_2_1_queue :: ThreadSafeQueue(1000);
+link_2_1_bw :: LinkUnqueue(0ms, 1Gbps);
+link_2_1_loss :: RandomSample(DROP 0.0);
+link_3_2_queue :: ThreadSafeQueue(1000);
+link_3_2_bw :: LinkUnqueue(2ms, 1Mbps);
+link_3_2_loss :: RandomSample(DROP 0.0);
+link_2_3_queue :: ThreadSafeQueue(1000);
+link_2_3_bw :: LinkUnqueue(2ms, 1Mbps);
+link_2_3_loss :: RandomSample(DROP 0.0);
+
+// Decrement TTL and send time exceeded replies
+r1ttl_3 :: DecIPTTL;
+r1ttl_3[1] -> ICMPError(10.100.150.1, timeexceeded) -> router1;
+r3ttl_1 :: DecIPTTL;
+r3ttl_1[1] -> ICMPError(10.100.150.3, timeexceeded) -> router3;
+r1ttl_2 :: DecIPTTL;
+r1ttl_2[1] -> ICMPError(10.100.150.1, timeexceeded) -> router1;
+r2ttl_1 :: DecIPTTL;
+r2ttl_1[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+r1ttl_out_e1 :: DecIPTTL;
+r1ttl_out_e1[1] -> ICMPError(10.100.150.1, timeexceeded) -> router1;
+r3ttl_2 :: DecIPTTL;
+r3ttl_2[1] -> ICMPError(10.100.150.3, timeexceeded) -> router3;
+r2ttl_3 :: DecIPTTL;
+r2ttl_3[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+r3ttl_out_e3 :: DecIPTTL;
+r3ttl_out_e3[1] -> ICMPError(10.100.150.3, timeexceeded) -> router3;
+r2ttl_out_e2 :: DecIPTTL;
+r2ttl_out_e2[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+
+// Links
+router1[1] -> r1ttl_2 -> SetTimestamp(FIRST true) -> link_1_2_queue -> CoDel() -> link_1_2_loss -> link_1_2_bw -> router2
+router1[2] -> r1ttl_3 -> SetTimestamp(FIRST true) -> link_1_3_queue -> CoDel() -> link_1_3_loss -> link_1_3_bw -> router3
+router2[0] -> r2ttl_1 -> SetTimestamp(FIRST true) -> link_2_1_queue -> CoDel() -> link_2_1_loss -> link_2_1_bw -> router1
+router2[2] -> r2ttl_3 -> SetTimestamp(FIRST true) -> link_2_3_queue -> CoDel() -> link_2_3_loss -> link_2_3_bw -> router3
+router3[0] -> r3ttl_1 -> SetTimestamp(FIRST true) -> link_3_1_queue -> CoDel() -> link_3_1_loss -> link_3_1_bw -> router1
+router3[1] -> r3ttl_2 -> SetTimestamp(FIRST true) -> link_3_2_queue -> CoDel() -> link_3_2_loss -> link_3_2_bw -> router2
+
+ // Teed Inputs and Outputs
+
+ // Input from Teed interfaces is discarded
+
+// Output Chains
+
+// Send IP Packets to Routers
+c1[0] -> Strip(14) -> CheckIPHeader(0) -> router1;
+c3[0] -> Strip(14) -> CheckIPHeader(0) -> router3;
+c2[0] -> Strip(14) -> CheckIPHeader(0) -> router2;
+chost[0] -> Strip(14) -> CheckIPHeader(0) -> router1;
+
+// Send out packets to Interfaces
+router1[0] -> r1ttl_out_e1 -> arpq1;
+router2[1] -> r2ttl_out_e2 -> arpq2;
+router3[2] -> r3ttl_out_e3 -> arpq3;
+
+// Local Delivery
+toh :: ToHost(fake0);
+
+router1[3] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router3[3] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router2[3] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+arpt[3] -> toh;
+
+// Unknown packets to their death
+c1[3] -> Print("${if1} Non IP") -> Discard;
+c2[3] -> Print("${if2} Non IP") -> Discard;
+c3[3] -> Print("${if3} Non IP") -> Discard;
+chost[3] -> Print("Host Non IP") -> Discard;

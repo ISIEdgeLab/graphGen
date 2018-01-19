@@ -1,0 +1,6 @@
+e1 1
+e2 2
+e3 3 {"bw": "10Mbps", "delay": "20ms"}
+1 2
+1 3
+2 3 {"bw": "1Mbps", "delay": "2ms"}

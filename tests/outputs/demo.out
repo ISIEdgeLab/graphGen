@@ -1,0 +1,417 @@
+// Auto generated Click Template using GraphGen/clickGen.py at Sun Jan 14 02:50:13 2018 UTC
+// Command line: ../graphgen/graphGen.py -n ./outputs/demo.ns -o ./outputs/demo.out ./inputs/demo.xnet 
+
+
+// Routers
+router1 :: RadixIPLookup(${if1_ip} 3,
+                         ${if4_16} 2,
+                         ${if5_16} 2,
+                         ${if6_16} 1,
+                         ${if1_16} ${if1_gw} 0,
+                         ${if2_16} 1,
+                         ${if3_16} 1,
+                         10.100.150.6 1,
+                         10.100.150.7 2,
+                         10.100.150.4 2,
+                         10.100.150.5 2,
+                         10.100.150.2 1,
+                         10.100.150.3 1,
+                         10.100.150.8 1,
+                         10.100.150.1 3);
+
+router2 :: RadixIPLookup(${if2_ip} 5,
+                         ${if4_16} 3,
+                         ${if5_16} 4,
+                         ${if6_16} 4,
+                         ${if1_16} 0,
+                         ${if2_16} ${if2_gw} 1,
+                         ${if3_16} 2,
+                         10.100.150.6 4,
+                         10.100.150.7 3,
+                         10.100.150.4 3,
+                         10.100.150.5 4,
+                         10.100.150.3 2,
+                         10.100.150.1 0,
+                         10.100.150.8 4,
+                         10.100.150.2 5);
+
+router3 :: RadixIPLookup(${if3_ip} 3,
+                         ${if4_16} 2,
+                         ${if5_16} 2,
+                         ${if6_16} 2,
+                         ${if1_16} 0,
+                         ${if2_16} 0,
+                         ${if3_16} ${if3_gw} 1,
+                         10.100.150.6 2,
+                         10.100.150.7 2,
+                         10.100.150.4 2,
+                         10.100.150.5 2,
+                         10.100.150.2 0,
+                         10.100.150.1 0,
+                         10.100.150.8 2,
+                         10.100.150.3 3);
+
+router4 :: RadixIPLookup(${if4_ip} 3,
+                         ${if4_16} ${if4_gw} 0,
+                         ${if5_16} 1,
+                         ${if6_16} 1,
+                         ${if1_16} 2,
+                         ${if2_16} 2,
+                         ${if3_16} 1,
+                         10.100.150.6 1,
+                         10.100.150.7 2,
+                         10.100.150.5 1,
+                         10.100.150.2 2,
+                         10.100.150.3 1,
+                         10.100.150.1 2,
+                         10.100.150.8 1,
+                         10.100.150.4 3);
+
+router5 :: RadixIPLookup(${if5_ip} 5,
+                         ${if4_16} 0,
+                         ${if5_16} ${if5_gw} 1,
+                         ${if6_16} 2,
+                         ${if1_16} 3,
+                         ${if2_16} 4,
+                         ${if3_16} 4,
+                         10.100.150.6 2,
+                         10.100.150.7 3,
+                         10.100.150.4 0,
+                         10.100.150.2 4,
+                         10.100.150.3 4,
+                         10.100.150.1 3,
+                         10.100.150.8 4,
+                         10.100.150.5 5);
+
+router6 :: RadixIPLookup(${if6_ip} 3,
+                         ${if4_16} 0,
+                         ${if5_16} 0,
+                         ${if6_16} ${if6_gw} 1,
+                         ${if1_16} 2,
+                         ${if2_16} 2,
+                         ${if3_16} 2,
+                         10.100.150.7 2,
+                         10.100.150.4 0,
+                         10.100.150.5 0,
+                         10.100.150.2 2,
+                         10.100.150.3 2,
+                         10.100.150.1 2,
+                         10.100.150.8 2,
+                         10.100.150.6 3);
+
+router7 :: RadixIPLookup(${if4_16} 2,
+                         ${if5_16} 3,
+                         ${if6_16} 4,
+                         ${if1_16} 0,
+                         ${if2_16} 1,
+                         ${if3_16} 4,
+                         10.100.150.6 4,
+                         10.100.150.4 2,
+                         10.100.150.5 3,
+                         10.100.150.2 1,
+                         10.100.150.3 4,
+                         10.100.150.1 0,
+                         10.100.150.8 4,
+                         10.100.150.7 5);
+
+router8 :: RadixIPLookup(${if4_16} 2,
+                         ${if5_16} 2,
+                         ${if6_16} 3,
+                         ${if1_16} 0,
+                         ${if2_16} 0,
+                         ${if3_16} 1,
+                         10.100.150.6 3,
+                         10.100.150.7 4,
+                         10.100.150.4 2,
+                         10.100.150.5 2,
+                         10.100.150.2 0,
+                         10.100.150.3 1,
+                         10.100.150.1 0,
+                         10.100.150.8 5);
+
+
+// Packet Classifiers
+c1 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+c2 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+c3 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+c4 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+c5 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+c6 :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+chost :: Classifier(12/0800, 12/0806 20/0001, 12/0806 20/0002, -);
+
+// VLAN Multiplexing
+vlanmux :: VlanSwitch(VLAN ${vlan1}, VLAN ${vlan2}, VLAN ${vlan3}, VLAN ${vlan4}, VLAN ${vlan5}, VLAN ${vlan6});
+
+// Packet Arrival
+$DPDKArrival
+vlanmux[0] -> c1;
+vlanmux[1] -> c2;
+vlanmux[2] -> c3;
+vlanmux[3] -> c4;
+vlanmux[4] -> c5;
+vlanmux[5] -> c6;
+FromHost(fake0) -> chost;
+
+// Packet Departure
+$DPDKDeparture
+out1 :: VLANEncap(${vlan1}) -> ${out_if1};
+out2 :: VLANEncap(${vlan2}) -> ${out_if2};
+out3 :: VLANEncap(${vlan3}) -> ${out_if3};
+out4 :: VLANEncap(${vlan4}) -> ${out_if4};
+out5 :: VLANEncap(${vlan5}) -> ${out_if5};
+out6 :: VLANEncap(${vlan6}) -> ${out_if6};
+
+// Handle ARP
+arpt :: Tee(7);
+
+c1[1] -> ar1 :: ARPResponder(${if1_ip} ${if1_eth}) -> out1;
+arpq1 :: ARPQuerier(${if1_ip}, ${if1_eth}) -> out1;
+c1[2] -> arpt;
+arpt[0] -> [1]arpq1;
+
+c2[1] -> ar2 :: ARPResponder(${if2_ip} ${if2_eth}) -> out2;
+arpq2 :: ARPQuerier(${if2_ip}, ${if2_eth}) -> out2;
+c2[2] -> arpt;
+arpt[1] -> [1]arpq2;
+
+c3[1] -> ar3 :: ARPResponder(${if3_ip} ${if3_eth}) -> out3;
+arpq3 :: ARPQuerier(${if3_ip}, ${if3_eth}) -> out3;
+c3[2] -> arpt;
+arpt[2] -> [1]arpq3;
+
+c4[1] -> ar4 :: ARPResponder(${if4_ip} ${if4_eth}) -> out4;
+arpq4 :: ARPQuerier(${if4_ip}, ${if4_eth}) -> out4;
+c4[2] -> arpt;
+arpt[3] -> [1]arpq4;
+
+c5[1] -> ar5 :: ARPResponder(${if5_ip} ${if5_eth}) -> out5;
+arpq5 :: ARPQuerier(${if5_ip}, ${if5_eth}) -> out5;
+c5[2] -> arpt;
+arpt[4] -> [1]arpq5;
+
+c6[1] -> ar6 :: ARPResponder(${if6_ip} ${if6_eth}) -> out6;
+arpq6 :: ARPQuerier(${if6_ip}, ${if6_eth}) -> out6;
+c6[2] -> arpt;
+arpt[5] -> [1]arpq6;
+
+chost[1] -> c1;
+chost[2] -> arpt;
+
+// Link Traffic Shaping
+link_1_2_queue :: ThreadSafeQueue(1000);
+link_1_2_bw :: LinkUnqueue(0ms, 1Gbps);
+link_1_2_loss :: RandomSample(DROP 0.0);
+link_2_1_queue :: ThreadSafeQueue(1000);
+link_2_1_bw :: LinkUnqueue(0ms, 1Gbps);
+link_2_1_loss :: RandomSample(DROP 0.0);
+link_1_7_queue :: ThreadSafeQueue(1000);
+link_1_7_bw :: LinkUnqueue(0ms, 1Gbps);
+link_1_7_loss :: RandomSample(DROP 0.0);
+link_7_1_queue :: ThreadSafeQueue(1000);
+link_7_1_bw :: LinkUnqueue(0ms, 1Gbps);
+link_7_1_loss :: RandomSample(DROP 0.0);
+link_3_8_queue :: ThreadSafeQueue(1000);
+link_3_8_bw :: LinkUnqueue(0ms, 1Gbps);
+link_3_8_loss :: RandomSample(DROP 0.0);
+link_8_3_queue :: ThreadSafeQueue(1000);
+link_8_3_bw :: LinkUnqueue(0ms, 1Gbps);
+link_8_3_loss :: RandomSample(DROP 0.0);
+link_3_2_queue :: ThreadSafeQueue(1000);
+link_3_2_bw :: LinkUnqueue(0ms, 1Gbps);
+link_3_2_loss :: RandomSample(DROP 0.0);
+link_2_3_queue :: ThreadSafeQueue(1000);
+link_2_3_bw :: LinkUnqueue(0ms, 1Gbps);
+link_2_3_loss :: RandomSample(DROP 0.0);
+link_2_8_queue :: ThreadSafeQueue(1000);
+link_2_8_bw :: LinkUnqueue(0ms, 1Gbps);
+link_2_8_loss :: RandomSample(DROP 0.0);
+link_8_2_queue :: ThreadSafeQueue(1000);
+link_8_2_bw :: LinkUnqueue(0ms, 1Gbps);
+link_8_2_loss :: RandomSample(DROP 0.0);
+link_2_7_queue :: ThreadSafeQueue(1000);
+link_2_7_bw :: LinkUnqueue(0ms, 1Gbps);
+link_2_7_loss :: RandomSample(DROP 0.0);
+link_7_2_queue :: ThreadSafeQueue(1000);
+link_7_2_bw :: LinkUnqueue(0ms, 1Gbps);
+link_7_2_loss :: RandomSample(DROP 0.0);
+link_5_8_queue :: ThreadSafeQueue(1000);
+link_5_8_bw :: LinkUnqueue(0ms, 1Gbps);
+link_5_8_loss :: RandomSample(DROP 0.0);
+link_8_5_queue :: ThreadSafeQueue(1000);
+link_8_5_bw :: LinkUnqueue(0ms, 1Gbps);
+link_8_5_loss :: RandomSample(DROP 0.0);
+link_5_4_queue :: ThreadSafeQueue(1000);
+link_5_4_bw :: LinkUnqueue(0ms, 1Gbps);
+link_5_4_loss :: RandomSample(DROP 0.0);
+link_4_5_queue :: ThreadSafeQueue(1000);
+link_4_5_bw :: LinkUnqueue(0ms, 1Gbps);
+link_4_5_loss :: RandomSample(DROP 0.0);
+link_5_7_queue :: ThreadSafeQueue(1000);
+link_5_7_bw :: LinkUnqueue(0ms, 1Gbps);
+link_5_7_loss :: RandomSample(DROP 0.0);
+link_7_5_queue :: ThreadSafeQueue(1000);
+link_7_5_bw :: LinkUnqueue(0ms, 1Gbps);
+link_7_5_loss :: RandomSample(DROP 0.0);
+link_5_6_queue :: ThreadSafeQueue(1000);
+link_5_6_bw :: LinkUnqueue(0ms, 1Gbps);
+link_5_6_loss :: RandomSample(DROP 0.0);
+link_6_5_queue :: ThreadSafeQueue(1000);
+link_6_5_bw :: LinkUnqueue(0ms, 1Gbps);
+link_6_5_loss :: RandomSample(DROP 0.0);
+link_4_7_queue :: ThreadSafeQueue(1000);
+link_4_7_bw :: LinkUnqueue(0ms, 1Gbps);
+link_4_7_loss :: RandomSample(DROP 0.0);
+link_7_4_queue :: ThreadSafeQueue(1000);
+link_7_4_bw :: LinkUnqueue(0ms, 1Gbps);
+link_7_4_loss :: RandomSample(DROP 0.0);
+link_7_8_queue :: ThreadSafeQueue(1000);
+link_7_8_bw :: LinkUnqueue(0ms, 1Gbps);
+link_7_8_loss :: RandomSample(DROP 0.0);
+link_8_7_queue :: ThreadSafeQueue(1000);
+link_8_7_bw :: LinkUnqueue(0ms, 1Gbps);
+link_8_7_loss :: RandomSample(DROP 0.0);
+link_6_8_queue :: ThreadSafeQueue(1000);
+link_6_8_bw :: LinkUnqueue(0ms, 1Gbps);
+link_6_8_loss :: RandomSample(DROP 0.0);
+link_8_6_queue :: ThreadSafeQueue(1000);
+link_8_6_bw :: LinkUnqueue(0ms, 1Gbps);
+link_8_6_loss :: RandomSample(DROP 0.0);
+
+// Decrement TTL and send time exceeded replies
+r1ttl_2 :: DecIPTTL;
+r1ttl_2[1] -> ICMPError(10.100.150.1, timeexceeded) -> router1;
+r2ttl_1 :: DecIPTTL;
+r2ttl_1[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+r1ttl_out_e1 :: DecIPTTL;
+r1ttl_out_e1[1] -> ICMPError(10.100.150.1, timeexceeded) -> router1;
+r1ttl_7 :: DecIPTTL;
+r1ttl_7[1] -> ICMPError(10.100.150.1, timeexceeded) -> router1;
+r7ttl_1 :: DecIPTTL;
+r7ttl_1[1] -> ICMPError(10.100.150.7, timeexceeded) -> router7;
+r3ttl_8 :: DecIPTTL;
+r3ttl_8[1] -> ICMPError(10.100.150.3, timeexceeded) -> router3;
+r8ttl_3 :: DecIPTTL;
+r8ttl_3[1] -> ICMPError(10.100.150.8, timeexceeded) -> router8;
+r3ttl_2 :: DecIPTTL;
+r3ttl_2[1] -> ICMPError(10.100.150.3, timeexceeded) -> router3;
+r2ttl_3 :: DecIPTTL;
+r2ttl_3[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+r3ttl_out_e3 :: DecIPTTL;
+r3ttl_out_e3[1] -> ICMPError(10.100.150.3, timeexceeded) -> router3;
+r2ttl_8 :: DecIPTTL;
+r2ttl_8[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+r8ttl_2 :: DecIPTTL;
+r8ttl_2[1] -> ICMPError(10.100.150.8, timeexceeded) -> router8;
+r2ttl_7 :: DecIPTTL;
+r2ttl_7[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+r7ttl_2 :: DecIPTTL;
+r7ttl_2[1] -> ICMPError(10.100.150.7, timeexceeded) -> router7;
+r2ttl_out_e2 :: DecIPTTL;
+r2ttl_out_e2[1] -> ICMPError(10.100.150.2, timeexceeded) -> router2;
+r5ttl_out_e5 :: DecIPTTL;
+r5ttl_out_e5[1] -> ICMPError(10.100.150.5, timeexceeded) -> router5;
+r5ttl_8 :: DecIPTTL;
+r5ttl_8[1] -> ICMPError(10.100.150.5, timeexceeded) -> router5;
+r8ttl_5 :: DecIPTTL;
+r8ttl_5[1] -> ICMPError(10.100.150.8, timeexceeded) -> router8;
+r5ttl_4 :: DecIPTTL;
+r5ttl_4[1] -> ICMPError(10.100.150.5, timeexceeded) -> router5;
+r4ttl_5 :: DecIPTTL;
+r4ttl_5[1] -> ICMPError(10.100.150.4, timeexceeded) -> router4;
+r5ttl_7 :: DecIPTTL;
+r5ttl_7[1] -> ICMPError(10.100.150.5, timeexceeded) -> router5;
+r7ttl_5 :: DecIPTTL;
+r7ttl_5[1] -> ICMPError(10.100.150.7, timeexceeded) -> router7;
+r5ttl_6 :: DecIPTTL;
+r5ttl_6[1] -> ICMPError(10.100.150.5, timeexceeded) -> router5;
+r6ttl_5 :: DecIPTTL;
+r6ttl_5[1] -> ICMPError(10.100.150.6, timeexceeded) -> router6;
+r4ttl_out_e4 :: DecIPTTL;
+r4ttl_out_e4[1] -> ICMPError(10.100.150.4, timeexceeded) -> router4;
+r4ttl_7 :: DecIPTTL;
+r4ttl_7[1] -> ICMPError(10.100.150.4, timeexceeded) -> router4;
+r7ttl_4 :: DecIPTTL;
+r7ttl_4[1] -> ICMPError(10.100.150.7, timeexceeded) -> router7;
+r7ttl_8 :: DecIPTTL;
+r7ttl_8[1] -> ICMPError(10.100.150.7, timeexceeded) -> router7;
+r8ttl_7 :: DecIPTTL;
+r8ttl_7[1] -> ICMPError(10.100.150.8, timeexceeded) -> router8;
+r6ttl_8 :: DecIPTTL;
+r6ttl_8[1] -> ICMPError(10.100.150.6, timeexceeded) -> router6;
+r8ttl_6 :: DecIPTTL;
+r8ttl_6[1] -> ICMPError(10.100.150.8, timeexceeded) -> router8;
+r6ttl_out_e6 :: DecIPTTL;
+r6ttl_out_e6[1] -> ICMPError(10.100.150.6, timeexceeded) -> router6;
+
+// Links
+router1[1] -> r1ttl_2 -> SetTimestamp(FIRST true) -> link_1_2_queue -> CoDel() -> link_1_2_loss -> link_1_2_bw -> router2
+router1[2] -> r1ttl_7 -> SetTimestamp(FIRST true) -> link_1_7_queue -> CoDel() -> link_1_7_loss -> link_1_7_bw -> router7
+router2[0] -> r2ttl_1 -> SetTimestamp(FIRST true) -> link_2_1_queue -> CoDel() -> link_2_1_loss -> link_2_1_bw -> router1
+router2[2] -> r2ttl_3 -> SetTimestamp(FIRST true) -> link_2_3_queue -> CoDel() -> link_2_3_loss -> link_2_3_bw -> router3
+router2[3] -> r2ttl_7 -> SetTimestamp(FIRST true) -> link_2_7_queue -> CoDel() -> link_2_7_loss -> link_2_7_bw -> router7
+router2[4] -> r2ttl_8 -> SetTimestamp(FIRST true) -> link_2_8_queue -> CoDel() -> link_2_8_loss -> link_2_8_bw -> router8
+router3[0] -> r3ttl_2 -> SetTimestamp(FIRST true) -> link_3_2_queue -> CoDel() -> link_3_2_loss -> link_3_2_bw -> router2
+router3[2] -> r3ttl_8 -> SetTimestamp(FIRST true) -> link_3_8_queue -> CoDel() -> link_3_8_loss -> link_3_8_bw -> router8
+router4[1] -> r4ttl_5 -> SetTimestamp(FIRST true) -> link_4_5_queue -> CoDel() -> link_4_5_loss -> link_4_5_bw -> router5
+router4[2] -> r4ttl_7 -> SetTimestamp(FIRST true) -> link_4_7_queue -> CoDel() -> link_4_7_loss -> link_4_7_bw -> router7
+router5[0] -> r5ttl_4 -> SetTimestamp(FIRST true) -> link_5_4_queue -> CoDel() -> link_5_4_loss -> link_5_4_bw -> router4
+router5[2] -> r5ttl_6 -> SetTimestamp(FIRST true) -> link_5_6_queue -> CoDel() -> link_5_6_loss -> link_5_6_bw -> router6
+router5[3] -> r5ttl_7 -> SetTimestamp(FIRST true) -> link_5_7_queue -> CoDel() -> link_5_7_loss -> link_5_7_bw -> router7
+router5[4] -> r5ttl_8 -> SetTimestamp(FIRST true) -> link_5_8_queue -> CoDel() -> link_5_8_loss -> link_5_8_bw -> router8
+router6[0] -> r6ttl_5 -> SetTimestamp(FIRST true) -> link_6_5_queue -> CoDel() -> link_6_5_loss -> link_6_5_bw -> router5
+router6[2] -> r6ttl_8 -> SetTimestamp(FIRST true) -> link_6_8_queue -> CoDel() -> link_6_8_loss -> link_6_8_bw -> router8
+router7[0] -> r7ttl_1 -> SetTimestamp(FIRST true) -> link_7_1_queue -> CoDel() -> link_7_1_loss -> link_7_1_bw -> router1
+router7[1] -> r7ttl_2 -> SetTimestamp(FIRST true) -> link_7_2_queue -> CoDel() -> link_7_2_loss -> link_7_2_bw -> router2
+router7[2] -> r7ttl_4 -> SetTimestamp(FIRST true) -> link_7_4_queue -> CoDel() -> link_7_4_loss -> link_7_4_bw -> router4
+router7[3] -> r7ttl_5 -> SetTimestamp(FIRST true) -> link_7_5_queue -> CoDel() -> link_7_5_loss -> link_7_5_bw -> router5
+router7[4] -> r7ttl_8 -> SetTimestamp(FIRST true) -> link_7_8_queue -> CoDel() -> link_7_8_loss -> link_7_8_bw -> router8
+router8[0] -> r8ttl_2 -> SetTimestamp(FIRST true) -> link_8_2_queue -> CoDel() -> link_8_2_loss -> link_8_2_bw -> router2
+router8[1] -> r8ttl_3 -> SetTimestamp(FIRST true) -> link_8_3_queue -> CoDel() -> link_8_3_loss -> link_8_3_bw -> router3
+router8[2] -> r8ttl_5 -> SetTimestamp(FIRST true) -> link_8_5_queue -> CoDel() -> link_8_5_loss -> link_8_5_bw -> router5
+router8[3] -> r8ttl_6 -> SetTimestamp(FIRST true) -> link_8_6_queue -> CoDel() -> link_8_6_loss -> link_8_6_bw -> router6
+router8[4] -> r8ttl_7 -> SetTimestamp(FIRST true) -> link_8_7_queue -> CoDel() -> link_8_7_loss -> link_8_7_bw -> router7
+
+ // Teed Inputs and Outputs
+
+ // Input from Teed interfaces is discarded
+
+// Output Chains
+
+// Send IP Packets to Routers
+c1[0] -> Strip(14) -> CheckIPHeader(0) -> router1;
+c3[0] -> Strip(14) -> CheckIPHeader(0) -> router3;
+c2[0] -> Strip(14) -> CheckIPHeader(0) -> router2;
+c5[0] -> Strip(14) -> CheckIPHeader(0) -> router5;
+c4[0] -> Strip(14) -> CheckIPHeader(0) -> router4;
+c6[0] -> Strip(14) -> CheckIPHeader(0) -> router6;
+chost[0] -> Strip(14) -> CheckIPHeader(0) -> router1;
+
+// Send out packets to Interfaces
+router1[0] -> r1ttl_out_e1 -> arpq1;
+router2[1] -> r2ttl_out_e2 -> arpq2;
+router3[1] -> r3ttl_out_e3 -> arpq3;
+router4[0] -> r4ttl_out_e4 -> arpq4;
+router5[1] -> r5ttl_out_e5 -> arpq5;
+router6[1] -> r6ttl_out_e6 -> arpq6;
+
+// Local Delivery
+toh :: ToHost(fake0);
+
+router1[3] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router3[3] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router2[5] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router5[5] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router4[3] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router7[5] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router6[3] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+router8[5] -> EtherEncap(0x0800, 1:1:1:1:1:1, 2:2:2:2:2:2) -> toh;
+arpt[6] -> toh;
+
+// Unknown packets to their death
+c1[3] -> Print("${if1} Non IP") -> Discard;
+c2[3] -> Print("${if2} Non IP") -> Discard;
+c3[3] -> Print("${if3} Non IP") -> Discard;
+c4[3] -> Print("${if4} Non IP") -> Discard;
+c5[3] -> Print("${if5} Non IP") -> Discard;
+c6[3] -> Print("${if6} Non IP") -> Discard;
+chost[3] -> Print("Host Non IP") -> Discard;
