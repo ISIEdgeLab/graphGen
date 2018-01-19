@@ -16,10 +16,10 @@ import argparse
 
 class GraphGen():
 
-    def __init__(self, filename, routes=None, cmdline=[]):
+    def __init__(self, filename, routes=None, cmdline={}):
         self.g = None
-        self.ng = ng.NSGen(None, None, None)
-        self.cg = cg.ClickGen(None, None, cmdline)
+        self.ng = ng.NSGen(cmdline)
+        self.cg = cg.ClickGen(None, None, cmdline.__dict__)
 
         self.readGraph(filename)
         self.generateIFs()
@@ -28,6 +28,7 @@ class GraphGen():
         if routes != None:
             self.readRoutes(routes)
         self.distributeIPs()
+        self.ng.set_graph(self.g)
 
     def readGraph(self, filename):
         self.g = nx.read_edgelist(filename)
@@ -338,48 +339,113 @@ class GraphGen():
     def writeClick(self, filename):
         self.cg.writeClick(self.g, filename)
 
-    def writeNS(self, filename, args):
-        self.ng.writeNS(self.g, filename, args)
+    def writeNS(self):
+        self.ng.writeNS()
         
 def main():
+    hardware_types = [
+        'dl380g3', 'MicroCloud', 'pc2133', 'pc2133', 'bpc2133', 'pc3000', 'bpc3000', 'pc3060', 'bpc3060',
+        'pc3100', 'bvx2200', 'bpc2800', 'netfpga2', 'sm', 'smX10',
+        ]
     parser = argparse.ArgumentParser(description='Create click config given a graph.')
-    parser.add_argument('infile', type=str, help='Input graph file in any recognized networkx format')
-    parser.add_argument('-d', dest='draw_output', help='Draw the given input file and store in the given destination')
+    parser.add_argument(
+        'infile', type=str, help='Input graph file in any recognized networkx format'
+    )
+    parser.add_argument(
+        '-d', dest='draw_output', help='Draw the given input file and store in the given destination',
+    )
     parser.add_argument('-n', dest='ns_file', help='Write an ns file as well')
-    parser.add_argument('-o', dest='output', default='vrouter.template', help='Specify output for click template (default: vrouter.template)')
+    parser.add_argument(
+        '-o', dest='output', default='vrouter.template', 
+        help='Specify output for click template (default: vrouter.template)',
+    )
     parser.add_argument('-r', dest='routes', type=str, help='Specify input routes in the given ssv file')
-    parser.add_argument('--bandwidth', dest='bw', default='1Gbps', help='Default Bandwidth for each link (1Gbps)')
+    parser.add_argument(
+        '--click-hardware', type=str, dest='clickHardware', default='dl380g3',
+        choices=hardware_types,
+        help='Specify the specific hardware device you would like to use for Click',
+    )
+    parser.add_argument(
+        '--crypto-hardware', type=str, dest='cryptoHardware', default='MicroCloud',
+        choices=hardware_types,
+        help='Specify the specific hardware device you would like to use for Enclave crypto device',
+    )
+    parser.add_argument(
+        '--client-hardware', type=str, dest='clientHardware', default='MicroCloud',
+        choices=hardware_types,
+        help='Specify the specific hardware device you would like to use for client/servers',
+    )
+    parser.add_argument(
+        '--ct-hardware', type=str, dest='ctHardware', default='MicroCloud',
+        choices=hardware_types,
+        help='Specify the specific hardware device you would like to use for CT nodes',
+    )
+    parser.add_argument(
+        '--bandwidth', type=str, dest='bw', default='1Gbps',
+        # Note: DETER has awkward implementation for links less than 100Mbps that cause extra node added
+        choices=['100Mbps', '1000Mbps', '1Gbps', '10000Mbps', '10Gbps'],
+        help='Default Bandwidth for each link (1Gbps)',
+    )
     parser.add_argument('--delay', dest='delay', default='0ms', help='Default Delay for each link (0ms)')
-    parser.add_argument('--loss', dest='loss', default='0.0', help='Default Loss rate for each link (0.0)')
-    parser.add_argument('--set-startcmd', dest='startCmd', default="", help='Set a default start command to run on all nodes')
-    parser.add_argument('--CT-OS', dest='ct_os', default="Ubuntu1404-64-STD", help="Specify you're own OS for CT nodes")
+    parser.add_argument(
+        '--loss', dest='loss', type=float, default=0.0, help='Default Loss rate for each link (0.0)',
+    )
+    parser.add_argument(
+        '--set-startcmd', dest='startCmd', default="", help='Set a default start command to run on all nodes'
+    )
+    parser.add_argument(
+        '--CT-OS', dest='ct_os', default="Ubuntu1404-64-STD", help="Specify you're own OS for CT nodes"
+    )
     parser.add_argument('--default-OS', dest='os', default="Ubuntu1404-64-STD", help="Default OS for non CT nodes")
     parser.add_argument('--num-servers', dest='numServers', default=1, help='Number of servers per enclave')
     parser.add_argument('--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave')
-    parser.add_argument('--access-link-constraints', dest='inConstraints', default=False, action='store_const', const=True, help='Add link constraints to the access links for the vrouter')
-    parser.add_argument('--enable-dpdk', dest='useDPDK', default=True, help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)', action='store_const', const=True)
-    parser.add_argument('--enable-ARP', dest='arp', default=False, action='store_const', const=True, help='Configure click to use ARP')
-    parser.add_argument('--disable-codel', dest='useCodel', default=True, help='Disable CoDel on all links', action='store_const', const=False)
-    parser.add_argument('--disable-containers', dest='useContainers', default=True, help='Disable Containerization', action='store_const', const=False)
-    parser.add_argument('--disable-crypto-nodes', dest='useCrypto', default=True, help='Do not add any crypto nodes to enclaves', action='store_const', const=False)
-    parser.add_argument('--write-routes', dest='writeRoutes', default=False, help='Write routes when using multi-homing', action='store_const', const = True)
-    parser.add_argument('--write-paths', dest='writePaths', default="", help='Write enclave routing paths to the specified file')
+    parser.add_argument(
+        '--access-link-constraints', dest='inConstraints', default=False, action='store_const', const=True,
+        help='Add link constraints to the access links for the vrouter',
+    )
+    parser.add_argument(
+        '--enable-dpdk', dest='useDPDK', default=True, 
+        action='store_const', const=True,
+        help='Create Click template designed for DPDK support (note DPDK support automatically enables ARP)',
+        )
+    parser.add_argument(
+        '--enable-ARP', dest='arp', default=False, action='store_const', const=True,
+        help='Configure click to use ARP',
+    )
+    parser.add_argument(
+        '--disable-codel', dest='useCodel', default=True, action='store_const', const=False,
+        help='Disable CoDel on all links',
+    )
+    parser.add_argument(
+        '--disable-containers', dest='useContainers', default=True, action='store_const', const=False,
+        help='Disable Containerization',
+    )
+    parser.add_argument(
+        '--disable-crypto-nodes', dest='useCrypto', default=True, action='store_const', const=False,
+        help='Do not add any crypto nodes to enclaves',
+    )
+    parser.add_argument(
+        '--write-routes', dest='writeRoutes', default=False, action='store_const', const = True,
+        help='Write routes when using multi-homing',
+    )
+    parser.add_argument(
+        '--write-paths', dest='writePaths', default="", 
+        help='Write enclave routing paths to the specified file',
+    )
 
     args = parser.parse_args()
 
-    gen = GraphGen(args.infile, args.routes, cmdline=sys.argv)
+    gen = GraphGen(args.infile, args.routes, args)
 
     if args.writeRoutes:
         gen.writeRoutes('enclave.routes')
-    if args.writePaths != "":
+    if args.writePaths:
         gen.writePaths(args.writePaths)
-    if args.draw_output != None:
+    if args.draw_output:
         gen.drawGraph(args.draw_output)
     gen.writeClick(args)
-    if args.ns_file != None:
-        gen.writeNS(args.ns_file, args)
+    if args.ns_file:
+        gen.writeNS()
 
 if __name__ == "__main__":
     main()
-
-
