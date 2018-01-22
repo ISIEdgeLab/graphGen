@@ -1,5 +1,5 @@
-// Auto generated Click Template using GraphGen/clickGen.py at Sun Jan 14 02:50:13 2018 UTC
-// Command line: ../graphgen/graphGen.py -n ./outputs/demo.ns -o ./outputs/demo.out ./inputs/demo.xnet 
+// Auto generated Click Template using GraphGen/clickGen.py at Mon Jan 22 21:34:26 2018 UTC
+// Command line: {'arp': False, 'cryptoHardware': 'MicroCloud', 'ns_file': 'demo.ns', 'clientHardware': 'MicroCloud', 'writeRoutes': False, 'useDPDK': True, 'useCrypto': True, 'ct_os': 'Ubuntu1404-64-STD', 'draw_output': None, 'ctHardware': 'MicroCloud', 'useCodel': True, 'useContainers': True, 'loss': 0.0, 'os': 'Ubuntu1404-64-STD', 'clickHardware': 'dl380g3', 'delay': '0ms', 'writePaths': '', 'numServers': 1, 'bw': '1Gbps', 'numClients': 8, 'routes': None, 'output': 'demo.out', 'inConstraints': False, 'startCmd': '', 'infile': 'demo.xnet'} 
 
 
 // Routers
