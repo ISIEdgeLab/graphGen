@@ -14,14 +14,36 @@ import clickGen as cg
 import nsGen as ng
 import argparse
 
+def readGraph(filename):
+    graph_obj = nx.read_edgelist(filename)
+    push_elements = nx.get_edge_attributes(graph_obj, 's_elements')
+    pull_elements = nx.get_edge_attributes(graph_obj, 'l_elements')
+    for edge in nx.edges(graph_obj):
+        if edge not in push_elements:
+            push_elements[edge] = []
+        if edge not in pull_elements:
+            pull_elements[edge] = []
+            
+    for node in nx.nodes(graph_obj):
+        if re.match("o[0-9]+",  node):
+            graph_obj.node[node]['external'] = True
+    if __NX_VERSION__ > 1:
+        nx.set_edge_attributes(graph_obj, push_elements, 's_elements')
+        nx.set_edge_attributes(graph_obj, pull_elements, 'l_elements')
+    else:
+        nx.set_edge_attributes(graph_obj, 's_elements', push_elements)
+        nx.set_edge_attributes(graph_obj, 'l_elements', pull_elements)
+    return graph_obj
+
+
 class GraphGen():
 
     def __init__(self, filename, routes=None, cmdline={}):
-        self.g = None
         self.ng = ng.NSGen(cmdline)
         self.cg = cg.ClickGen(None, None, cmdline.__dict__)
 
-        self.readGraph(filename)
+        self.g = readGraph(filename)
+        # need to remove iteritems for py3 compatibility
         self.generateIFs()
         self.generateIPs()
         self.distributeIFs()
@@ -30,27 +52,6 @@ class GraphGen():
         self.distributeIPs()
         self.ng.set_graph(self.g)
 
-    def readGraph(self, filename):
-        self.g = nx.read_edgelist(filename)
-        push_elements = nx.get_edge_attributes(self.g, 's_elements')
-        pull_elements = nx.get_edge_attributes(self.g, 'l_elements')
-        for edge in nx.edges(self.g):
-            if edge not in push_elements:
-                push_elements[edge] = []
-            if edge not in pull_elements:
-                pull_elements[edge] = []
-                
-        for node in nx.nodes(self.g):
-            if re.match("o[0-9]+",  node):
-                self.g.node[node]['external'] = True
-        if __NX_VERSION__ > 1:
-            nx.set_edge_attributes(self.g, push_elements, 's_elements')
-            nx.set_edge_attributes(self.g, pull_elements, 'l_elements')
-        else:
-            nx.set_edge_attributes(self.g, 's_elements', push_elements)
-            nx.set_edge_attributes(self.g, 'l_elements', pull_elements)
-
-                
     def drawGraph(self, filename="graph.png"):
         pos = nx.spring_layout(self.g)
         #pos=nx.graphviz_layout(self.g)
@@ -180,7 +181,7 @@ class GraphGen():
 
         # need to determine proper link!
         
-        for node,ifaces in nx.get_node_attributes(self.g, 'ifs').iteritems():
+        for node,ifaces in nx.get_node_attributes(self.g, 'ifs').items():
 
             e_nodes = nx.get_node_attributes(self.g, 'ifs')
             
@@ -209,7 +210,7 @@ class GraphGen():
                 else:
                     nx.set_edge_attributes(g_tmp, 'weight', weights)
                 paths = nx.single_source_dijkstra_path(g_tmp, node, weight='weight')
-                for src, path in paths.iteritems():
+                for src, path in paths.items():
                     cost = 1
                     for x in range(1, len(path)):
                         edge = (path[x - 1], path[x])
@@ -243,7 +244,7 @@ class GraphGen():
 
     def distributeIPs(self):
         routes = nx.get_node_attributes(self.g, 'routes')
-        for node, ip in nx.get_node_attributes(self.g, 'ips').iteritems():  
+        for node, ip in nx.get_node_attributes(self.g, 'ips').items():  
             for edge in list(nx.bfs_edges(self.g, node)):
                 routes[edge[1]]['ips'][ip] = edge[0]
 
@@ -262,7 +263,7 @@ class GraphGen():
         for node in e_nodes:
             route = routes[node]['ifaces']
             cost = routes[node]['costs']
-            for iface, forward in route.iteritems():
+            for iface, forward in route.items():
                 enclave = re.search('[0-9]+', node).group(0)
                 prefix = re.search('[0-9]+', iface).group(0)
                 for link in elinks[node]:
