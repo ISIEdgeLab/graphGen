@@ -1,18 +1,21 @@
 #! /usr/bin/env python
 
+import argparse
+import csv
+import re
+
 import networkx as nx
 # networkx 2.x is not backwards compatable with 1.x
 __NX_VERSION__ = int(nx.__version__.split('.')[0])
 
 import matplotlib
-# Force matplotlib to not use any Xwindows backend.
+# Force matplotlib to not use any Xwindows backend
+# must be set before importing pyplot
 matplotlib.use('Agg')
-
 import matplotlib.pyplot as plt
-import re, csv, sys
-import clickGen as cg
-import nsGen as ng
-import argparse
+
+import click_gen as cg
+import ns_gen as ng
 
 def readGraph(filename):
     graph_obj = nx.read_edgelist(filename)

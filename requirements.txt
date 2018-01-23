@@ -1,2 +1,4 @@
 networkx==2.1.0
 matplotlib==2.1.2
+pylint==1.8.1
+pydot==1.2.4

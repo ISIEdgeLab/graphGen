@@ -68,7 +68,7 @@ class ClickGen():
     def writePreamble(self):
         tstr = time.asctime(time.gmtime(time.time()))
 
-        self.fh.write("// Auto generated Click Template using GraphGen/clickGen.py at %s UTC" % tstr)
+        self.fh.write("// Auto generated Click Template using graphgen/click_gen.py at %s UTC" % tstr)
         if self.cmdline:
             self.fh.write("\n// Command line: %s \n\n" % dict(self.cmdline))
 
