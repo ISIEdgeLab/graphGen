@@ -8,10 +8,12 @@ env:
   - NETWORKX_VERSION=2.0
 install:
   - pip install -q networkx==$NETWORKX_VERSION
-  - pip install -q pytest
+  - pip install matplotlib==2.1.2
+  - pip install pydot==1.2.4
   - python setup.py -q build
   - python setup.py -q install
-  - pip install pylint
+  - pip install pylint==1.8.1
+  - pip install flake8==3.5.0
 script:
-  - pylint graphgen/
-  - cd tests && python run_tests.py
+  - pylint graphgen/*.py
+  - flake8 graphgen/*.py
