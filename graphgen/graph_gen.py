@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+__version__ = "0.1.0"
 
 import argparse
 import csv
@@ -14,8 +15,9 @@ matplotlib.use('Agg')
 # pylint: disable=wrong-import-position
 import matplotlib.pyplot as plt
 
-import graphgen.click_gen as click_gen
-import graphgen.ns_gen as ns_gen
+#pylint: disable=relative-import
+import click_gen as click_gen
+import ns_gen as ns_gen
 
 # networkx 2.x is not backwards compatable with 1.x
 __NX_VERSION__ = int(nx.__version__.split('.')[0])
@@ -451,6 +453,10 @@ def main():
         '--write-paths', dest='write_paths', default="",
         help='Write enclave routing paths to the specified file',
     )
+    parser.add_argument(
+        '--version', action='version',
+        version='%(prog)s {version}'.format(version=__version__)
+    )
 
     args = parser.parse_args()
 
@@ -465,6 +471,11 @@ def main():
     gen.write_click(args)
     if args.ns_file:
         gen.write_ns()
+    if args.help:
+        args.print_help()
+        exit(1)
+    if args.version:
+        exit(1)
 
 if __name__ == "__main__":
     main()
