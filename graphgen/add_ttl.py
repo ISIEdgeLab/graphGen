@@ -1,64 +1,67 @@
 #!/usr/bin/python
 
-import sys, re
+import sys
+import re
 
 if len(sys.argv) <= 2:
-    print "Usage %s <input file> <output file>\n"
+    # pylint: disable=superfluous-parens
+    print("Usage %s <input file> <output file>\n")
     sys.exit(0)
 
-in_fp = open(str(sys.argv[1]), 'r')
-out_fp = open(str(sys.argv[2]), 'w')
+IN_FP = open(str(sys.argv[1]), 'r')
+OUT_FP = open(str(sys.argv[2]), 'w')
 
-max_if = 0
-old_line = ""
-for line in in_fp:
-    tokens = line.split()
-    if len(tokens) >= 1 and re.match('\$\{if[0-9]\}_loss', tokens[0]):
-        m = re.search('[0-9]', tokens[0])
+MAX_IF = 0
+OLD_LINE = ""
+for line in IN_FP:
+    TOKENS = line.split()
+    if len(TOKENS) >= 1 and re.match(r'\$\{if[0-9]\}_loss', TOKENS[0]):
+        m = re.search('[0-9]', TOKENS[0])
         if m:
             val = int(m.group(0))
-            if val > max_if:
-                max_if = val
-    elif len(tokens) >= 1 and re.match('router1\[[0-9]\]', tokens[0]):
-        old_line = line
+            if val > MAX_IF:
+                MAX_IF = val
+    elif len(TOKENS) >= 1 and re.match(r'router1\[[0-9]\]', TOKENS[0]):
+        OLD_LINE = line
         break
 
-    out_fp.write(line)
+    OUT_FP.write(line)
 
-out_fp.write("\n//Dec TTL\n\n")
-for ifs in range(max_if):
-    out_fp.write("ttl_%d :: DecIPTTL;\n" % (ifs + 1))
-    out_fp.write("ttl_%d[1] -> ICMPError(${if%d}:ip, timeexceeded) -> router1;\n" % ((ifs + 1), (ifs + 1)))
+OUT_FP.write("\n//Dec TTL\n\n")
+for ifs in range(MAX_IF):
+    OUT_FP.write("ttl_%d :: DecIPTTL;\n" % (ifs + 1))
+    OUT_FP.write(
+        "ttl_%d[1] -> ICMPError(${if%d}:ip, timeexceeded) -> router1;\n" % ((ifs + 1), (ifs + 1))
+    )
 
-out_fp.write("\n")
+OUT_FP.write("\n")
 
-count = 1
-tokens = old_line.split()
-if len(tokens) >= 3 and re.match('router1\[[0-9]\]', tokens[0]):
-    c = 0
-    for token in tokens:
-        if c == 2:
-            out_fp.write(" ttl_%d ->" % count)
-            count = count + 1
-        out_fp.write(" %s" % token)
-        c = c + 1
-    out_fp.write("\n")
+COUNT = 1
+TOKENS = OLD_LINE.split()
+if len(TOKENS) >= 3 and re.match(r'router1\[[0-9]\]', TOKENS[0]):
+    C = 0
+    for token in TOKENS:
+        if C == 2:
+            OUT_FP.write(" ttl_%d ->" % COUNT)
+            COUNT = COUNT + 1
+        OUT_FP.write(" %s" % token)
+        C = C + 1
+    OUT_FP.write("\n")
 
-done = False
-for line in in_fp:
-    tokens = line.split()
-    if not done and len(tokens) >= 3 and re.match('router1\[[0-9]\]', tokens[0]):
-        c = 0
-        for token in tokens:
-            if c == 2:
-                out_fp.write(" ttl_%d ->" % count)
-                count = count + 1
-            out_fp.write(" %s" % token)
-            c = c + 1
-        out_fp.write("\n")
-    elif len(tokens) >= 2 and re.match('Local', tokens[1]):
+DONE = False
+for line in IN_FP:
+    TOKENS = line.split()
+    if not DONE and len(TOKENS) >= 3 and re.match(r'router1\[[0-9]\]', TOKENS[0]):
+        C = 0
+        for token in TOKENS:
+            if C == 2:
+                OUT_FP.write(" ttl_%d ->" % COUNT)
+                COUNT = COUNT + 1
+            OUT_FP.write(" %s" % token)
+            C = C + 1
+        OUT_FP.write("\n")
+    elif len(TOKENS) >= 2 and re.match('Local', TOKENS[1]):
         done = True
-        out_fp.write(line)
+        OUT_FP.write(line)
     else:
-        out_fp.write(line)
-        
+        OUT_FP.write(line)
