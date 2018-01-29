@@ -341,7 +341,7 @@ class GraphGen(object):
         return path
 
     def write_click(self, filename):
-        self.click_gen.writeClick(self.graph, filename)
+        self.click_gen.write_click(self.graph, filename)
 
     def write_ns(self):
         self.ns_gen.writeNS()
