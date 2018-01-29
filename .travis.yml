@@ -2,7 +2,6 @@ language: python
 python:
   - "2.7"
   - "3.6"
-  - "nightly"
 env:
   - NETWORKX_VERSION=1.11
   - NETWORKX_VERSION=2.0
