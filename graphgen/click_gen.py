@@ -36,7 +36,7 @@ class ClickGen(object):
 
         self.num_inputs = len(nx.get_node_attributes(self.graph, 'ifs'))
         self.num_others = len(nx.get_node_attributes(self.graph, 'others'))
-        for node, _ in nx.get_node_attributes(self.graph, 'ifs').iteritems():
+        for node, _ in nx.get_node_attributes(self.graph, 'ifs').items():
             edges = nx.edges(self.graph, node)
             for edge in edges:
                 if re.match("e[0-9]+", edge[0]) or re.match("o[0-9]+", edge[0]):
@@ -238,7 +238,7 @@ class ClickGen(object):
         drop = self.args.loss
         queue_length = 1000
 
-        for router, router_list in in_routers.iteritems():
+        for router, router_list in in_routers.items():
             for router_iface in router_list:
                 iface = int(re.search('[0-9]+', router_iface).group(0))
                 if self.args.inConstraints:
@@ -435,7 +435,7 @@ class ClickGen(object):
             first_str = "router%s :: RadixIPLookup(" % node
             last_str = ""
             middle_str = ""
-            for iface, nhop in ifaces.iteritems():
+            for iface, nhop in ifaces.items():
                 if node in in_routers and iface in in_routers[node]:
                     last_str = "%s,\n                         ${%s_16} ${%s_gw} %d" % (
                         last_str, iface, iface, neighbors.index(nhop)
@@ -451,7 +451,7 @@ class ClickGen(object):
                     last_str = "%s,\n                         ${%s_16} %d" % (
                         last_str, iface, neighbors.index(nhop)
                     )
-            for ip_addr, nhop in ips.iteritems():
+            for ip_addr, nhop in ips.items():
                 last_str = "%s,\n                         %s %d" % (
                     last_str, ip_addr, neighbors.index(nhop)
                 )
