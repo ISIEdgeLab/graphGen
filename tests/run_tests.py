@@ -48,7 +48,7 @@ class DummyArgs(object):
         self.writePaths = ''
 
 
-def run_graphgen(options, inputs=INPUT_DIR):
+def run_graphgen(options, network_inputs=INPUT_DIR):
     LOG.info(options)
     cmd = 'python {exe}/graphGen.py -n ' \
         '{cwd}/{out_d}/{no}_temp.ns -o {cwd}/{out_d}/{no}_temp.out ' \
@@ -57,8 +57,8 @@ def run_graphgen(options, inputs=INPUT_DIR):
             exe=EXE_DIR,
             in_d=INPUT_DIR,
             out_d=OUTPUT_DIR,
-            ni=network_input,
-            no=network_input.split('.')[0],
+            ni=network_inputs,
+            no=network_inputs.split('.')[0],
         )
     LOG.info(cmd)
     # generate outputs to compare with
@@ -99,7 +99,7 @@ class TestGeneratedFiles(unittest.TestCase):
     def test_ns(self):
         sys.path.append('../graphGen/')
         # pylint: disable=import-error
-        import networkx
+        # import networkx
         import nsGen
         from graphGen import readGraph
         cmdline = DummyArgs()

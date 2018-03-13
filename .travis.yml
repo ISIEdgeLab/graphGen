@@ -14,5 +14,5 @@ install:
   - pip install pylint==1.8.1
   - pip install flake8==3.5.0
 script:
-  - find . -iname "*.py" | xargs pylint
+  - find . -iname "*.py" | xargs pylint --ignore=setup.py
   - find . -iname "*.py" | xargs flake8

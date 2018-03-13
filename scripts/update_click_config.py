@@ -1,63 +1,66 @@
 #!/bin/python
-import sys, time
-import logging, os
-import netaddr as na
-import netifaces as ni
+import sys
+import time
+import logging
+import os
 import json
 import argparse
-
 from subprocess import Popen, PIPE, check_call, CalledProcessError, STDOUT
 import re
 from string import Template
-from os import devnull
 
-log = logging.getLogger(__name__)
+import netaddr as na
+import netifaces as ni
+
+LOGGER = logging.getLogger(__name__)
+
+
+def get_hosts(path):
+    ''' read local /etc/hosts file and return an {ip: hostname, ...} dict of the info found there'''
+    ret = {}
+    with open(path, 'r') as path_fd:
+        for line in path_fd:
+            line = line.strip('\n')
+            # 10.0.1.3    xander-landos xander-0 xander
+            reg_match = re.match(r'([\d\.]+)\s+([^ ]+)', line)
+            if reg_match:
+                ret[reg_match.group(1)] = reg_match.group(2)
+    return ret
+
 
 class OneHopNeighbors(object):
     def __init__(self):
         super(OneHopNeighbors, self).__init__()
-        Popen(["apt-get", "install", "traceroute", "-y"], stdout = PIPE, stderr = PIPE).communicate()
-        self.hosts = self._get_hosts('/etc/hosts')
+        Popen(["apt-get", "install", "traceroute", "-y"], stdout=PIPE, stderr=PIPE).communicate()
+        self.hosts = get_hosts('/etc/hosts')
         self.dpdk = False
-
-    def _get_hosts(self, path):
-        ''' read local /etc/hosts file and return an {ip: hostname, ...} dict of the info found there.'''
-        ret = {}
-        with open(path, 'r') as fd:
-            for line in fd:
-                line = line.strip('\n')
-                # 10.0.1.3    xander-landos xander-0 xander
-                m = re.match('([\d\.]+)\s+([^ ]+)', line)
-                if m:
-                    ret[m.group(1)] = m.group(2)
-
-        return ret
 
     def get_neighbors(self):
         (local_addrs, local_nets) = self.get_local_addresses()
         if not local_addrs:
-            log.warn('Unable to get local addresses - cannot continue.')
+            LOGGER.warn('Unable to get local addresses - cannot continue.')
             return None
-        
-        DEVNULL = open(devnull, 'w')
+        devnull = open(os.devnull, 'w')
         one_hop_nbrs = {}
         for addr, host in self.hosts.iteritems():
-            log.debug('comp: {} <--> {}'.format(addr, local_addrs.keys()))
+            LOGGER.debug('comp: %s <--> %s', addr, local_addrs.keys())
             if addr not in local_addrs.values():
-                ip = na.IPAddress(addr)
-                for host, network in local_nets.iteritems():
-                    if ip in network:
+                ip_addr = na.IPAddress(addr)
+                for lhost, network in local_nets.iteritems():
+                    if ip_addr in network:
                         cmd = 'ping -c 1 {}'.format(addr)
-                        try: 
-                            check_call(cmd.split(' '), stdout=DEVNULL, stderr=STDOUT)
-                        except (OSError, ValueError) as e:
-                            log.warn('Unable to run "{}": {}'.format(cmd, e))
+                        try:
+                            check_call(cmd.split(' '), stdout=devnull, stderr=STDOUT)
+                        except (OSError, ValueError) as err:
+                            LOGGER.warn('Unable to run "%s": %s', cmd, err)
                             continue
-                        except CalledProcessError as e:
-                            log.info('{} ({}) does not appear to be one hop neighbor.'.format(host, addr))
+                        except CalledProcessError:
+                            LOGGER.info(
+                                '%s (%s) does not appear to be one hop neighbor.', lhost, addr
+                            )
                             continue
 
-                # so at this point, it looks like this host entry is a one hop 
+                # so at this point, it looks like this host entry is a one hop
                 # neighbor. Add it to the list.
                 one_hop_nbrs[host] = addr
 
@@ -67,7 +70,7 @@ class OneHopNeighbors(object):
         try:
             o, _ = Popen(['ifconfig'], stdout=PIPE).communicate()
         except (OSError, ValueError) as e:
-            log.critical('Unable to read interface information via ifconfig: {}'.format(e))
+            LOGGER.critical('Unable to read interface information via ifconfig: {}'.format(e))
             return False
         
         local_addrs = {'localhost': '127.0.0.1'}
@@ -80,10 +83,10 @@ class OneHopNeighbors(object):
                     local_addrs[self.hosts[m.group(1)]] = m.group(1)
                     local_nets[self.hosts[m.group(1)]] = na.IPNetwork("%s/%s" % (m.group(1), m.group(3)))
                 else:
-                    log.warn('Found unnamed address in local interfaces (probably control '
+                    LOGGER.warn('Found unnamed address in local interfaces (probably control '
                              'net): {}'.format(m.group(1)))
 
-        log.debug('local addresses: {}'.format(local_addrs))
+        LOGGER.debug('local addresses: {}'.format(local_addrs))
         return (local_addrs, local_nets)
 
 class RouteUpdate(object):
@@ -307,9 +310,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.debug or args.verbose:
-        logging.basicConfig(filename='/tmp/click_config.log', level=logging.DEBUG)
+        logging.basicConfig(filename='/tmp/click_config.LOGGER', level=logging.DEBUG)
     else:
-        logging.basicConfig(filename='/tmp/click_config.log', level=logging.WARN)
+        logging.basicConfig(filename='/tmp/click_config.LOGGER', level=logging.WARN)
 
     ru = RouteUpdate()
     ru.updateRoutes()
