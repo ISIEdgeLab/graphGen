@@ -52,7 +52,7 @@ class OneHopNeighbors(object):
                         try:
                             check_call(cmd.split(' '), stdout=devnull, stderr=STDOUT)
                         except (OSError, ValueError) as err:
-                            LOGGER.warn('Unable to run "%s": %s', cmd, err)
+                            LOGGER.warn('Unable to run "%s": %s', cmd, str(err))
                             continue
                         except CalledProcessError:
                             LOGGER.info(
@@ -68,30 +68,35 @@ class OneHopNeighbors(object):
 
     def get_local_addresses(self):
         try:
-            o, _ = Popen(['ifconfig'], stdout=PIPE).communicate()
-        except (OSError, ValueError) as e:
-            LOGGER.critical('Unable to read interface information via ifconfig: {}'.format(e))
+            ifconfig_out, _ = Popen(['ifconfig'], stdout=PIPE).communicate()
+        except (OSError, ValueError) as err:
+            LOGGER.critical('Unable to read interface information via ifconfig: %s', str(err))
             return False
-        
+
         local_addrs = {'localhost': '127.0.0.1'}
         local_nets = {}
-        for line in o.split('\n'):
+        for line in ifconfig_out.split('\n'):
             # inet addr:10.0.6.2  Bcast:10.0.6.255  Mask:255.255.255.0
-            m = re.search('addr:([\d\.]+)\s+Bcast:([\d\.]+)\s+Mask:([\d\.]+)', line)
-            if m:
-                if m.group(1) in self.hosts.keys():
-                    local_addrs[self.hosts[m.group(1)]] = m.group(1)
-                    local_nets[self.hosts[m.group(1)]] = na.IPNetwork("%s/%s" % (m.group(1), m.group(3)))
+            reg_match = re.search(r'addr:([\d\.]+)\s+Bcast:([\d\.]+)\s+Mask:([\d\.]+)', line)
+            if reg_match:
+                if reg_match.group(1) in self.hosts.keys():
+                    local_addrs[self.hosts[reg_match.group(1)]] = reg_match.group(1)
+                    local_nets[self.hosts[reg_match.group(1)]] = na.IPNetwork(
+                        "%s/%s" % (reg_match.group(1), reg_match.group(3))
+                    )
                 else:
-                    LOGGER.warn('Found unnamed address in local interfaces (probably control '
-                             'net): {}'.format(m.group(1)))
+                    LOGGER.warn(
+                        'Found unnamed address in local interfaces (probably control '
+                        'net): %s', reg_match.group(1)
+                    )
 
-        LOGGER.debug('local addresses: {}'.format(local_addrs))
+        LOGGER.debug('local addresses: %s', local_addrs)
         return (local_addrs, local_nets)
 
+# pylint: disable=too-few-public-methods
 class RouteUpdate(object):
     def __init__(self):
-        (output, error) = Popen(["ip", "route"], stdout = PIPE, stderr = PIPE).communicate()
+        output, _ = Popen(["ip", "route"], stdout=PIPE, stderr=PIPE).communicate()
         out = output.splitlines()
 
         self.lines_to_remove = []
@@ -99,34 +104,35 @@ class RouteUpdate(object):
 
         for line in out:
             tokens = line.strip("\n").split()
-            if (len(tokens) >= 5 and tokens[1] == "via" and
-                tokens[0] != 'default' and
-                (tokens[0] != '192.168.0.0/22' and tokens[0] != '172.16.0.0/12' and
-                 tokens[0] != '192.168.0.0/16' and tokens[0] != '224.0.0.0/4')):
+            # pylint: disable=too-many-boolean-expressions
+            if (len(tokens) >= 5 and tokens[1] == "via" and tokens[0] != 'default' and
+                    (tokens[0] != '192.168.0.0/22' and tokens[0] != '172.16.0.0/12' and
+                     tokens[0] != '192.168.0.0/16' and tokens[0] != '224.0.0.0/4')):
                 self.lines_to_remove.append(line)
             else:
                 if (tokens[0] != 'default' and
-                    (tokens[0] != '192.168.0.0/22' and tokens[0] != '172.16.0.0/12' and
-                     tokens[0] != '192.168.0.0/16' and tokens[0] != '224.0.0.0/4')):
+                        (tokens[0] != '192.168.0.0/22' and tokens[0] != '172.16.0.0/12' and
+                         tokens[0] != '192.168.0.0/16' and tokens[0] != '224.0.0.0/4')):
                     self.ifaces.append(tokens[2])
 
-    def updateRoutes(self):
+
+    def update_routes(self):
         for line in self.lines_to_remove:
             route_to_rem = 'sudo ip route del %s' % line
-            check_call(route_to_rem.split(), stdout = PIPE, stderr = PIPE)
+            check_call(route_to_rem.split(), stdout=PIPE, stderr=PIPE)
 
         for iface in self.ifaces:
             addrs = ni.ifaddresses(iface)
-            ip = na.IPAddress(addrs[ni.AF_INET][0]['addr'])
-            net = na.IPNetwork('%s/255.255.0.0' % ip)
-            route_to_add = 'sudo ip route add %s via %s dev %s' % (net.cidr, (ip - 1), iface)
+            ip_addr = na.IPAddress(addrs[ni.AF_INET][0]['addr'])
+            net = na.IPNetwork('%s/255.255.0.0' % ip_addr)
+            route_to_add = 'sudo ip route add %s via %s dev %s' % (net.cidr, (ip_addr - 1), iface)
             print route_to_add
-            check_call(route_to_add.split(),  stdout = PIPE, stderr = PIPE)
+            check_call(route_to_add.split(), stdout=PIPE, stderr=PIPE)
 
 
-    
+# pylint: disable=too-many-instance-attributes
 class ClickConfig(object):
-    def __init__(self, args):
+    def __init__(self, vargs):
         self.template_file = "/tmp/vrouter.template"
         self.out_file = "/tmp/vrouter.click"
         self.input_file = "/tmp/ifconfig.json"
@@ -134,39 +140,39 @@ class ClickConfig(object):
         self.nbrs = OneHopNeighbors()
         self.nbrs.get_neighbors()
 
-        self.args = args
-        
+        self.args = vargs
+
         try:
             self.template = Template(open(self.template_file).read())
-            self.tf = open(self.template_file, "r")
-        except Exception as e:
+            self.tf_fd = open(self.template_file, "r")
+        except IOError:
             sys.stderr.write("Cannot find template file\n")
             sys.exit(1)
 
         self.arpless = False
-        self.useDPDK = False
-        for line in self.tf:
-	    if "friend" in line:
-		self.arpless = True
-	    if "$DPDKDeparture" in line:
-                self.useDPDK = True
-        self.tf.close()
-        
+        self.use_dpdk = False
+        for line in self.tf_fd:
+            if "friend" in line:
+                self.arpless = True
+            if "$DPDKDeparture" in line:
+                self.use_dpdk = True
+        self.tf_fd.close()
+
         self.ifs = {}
         self.data = {}
         self.gws = []
         self.routes = {}
 
-        if self.useDPDK:
-            self.installDPDK()
-        
-    def installDPDK(self):
+        if self.use_dpdk:
+            self.install_dpdk()
+
+    def install_dpdk(self):
         if os.path.exists(self.input_file):
             return
         out = open("/tmp/dpdk_config.out", "w")
         err = open("/tmp/dpdk_config.err", "w")
         os.environ["PATH"] += os.pathsep + '/proj/edgect/share/dpdk/bin'
-        
+
         check_call("install-dpdk.sh", stdout=out, stderr=err)
         check_call("install-fastclick.sh", stdout=out, stderr=err)
 
@@ -181,8 +187,8 @@ class ClickConfig(object):
         check_call("setup-dpdk.sh", stdout=out, stderr=err)
         out.close()
         err.close()
-        
-        
+
+
     def generate_inputs(self):
         fh_routes = open(self.routes_file)
         fh_inputs = open(self.input_file)
@@ -283,7 +289,7 @@ class ClickConfig(object):
         self.data['routing'] = route_str
                 
     def write_config(self):
-        if not self.useDPDK:
+        if not self.use_dpdk:
 	    time.sleep(10)
         config = self.template.substitute(self.data)
         fh = open(self.out_file, "w")
@@ -291,7 +297,7 @@ class ClickConfig(object):
         fh.close()
 
     def updateConfig(self):
-        if not self.useDPDK:
+        if not self.use_dpdk:
             self.parse_routing()
             #self.generate_route_str()
             if self.arpless:
@@ -315,7 +321,7 @@ if __name__ == "__main__":
         logging.basicConfig(filename='/tmp/click_config.LOGGER', level=logging.WARN)
 
     ru = RouteUpdate()
-    ru.updateRoutes()
+    ru.update_routes()
     uc = ClickConfig(args)
     uc.updateConfig()
 
