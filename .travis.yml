@@ -14,5 +14,5 @@ install:
   - pip install pylint==1.8.1
   - pip install flake8==3.5.0
 script:
-  - pylint graphgen/*.py
-  - flake8 graphgen/*.py
+  - find . -iname "*.py" | xargs pylint
+  - find . -iname "*.py" | xargs flake8
