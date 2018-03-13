@@ -2,16 +2,14 @@ language: python
 python:
   - "2.7"
   - "3.6"
-  - "nightly"
 env:
   - NETWORKX_VERSION=1.11
   - NETWORKX_VERSION=2.0
 install:
   - pip install -q networkx==$NETWORKX_VERSION
-  - pip install -q pytest
+  - pip install -r requirements.txt
   - python setup.py -q build
   - python setup.py -q install
-  - pip install pylint
 script:
-  - pylint graphgen/
-  - cd tests && python run_tests.py
+  - find . -iname "*.py" | xargs pylint --ignore=setup.py --extension-pkg-whitelist=netifaces --disable=duplicate-code
+  - find . -iname "*.py" | xargs flake8 --exclude=setup.py
