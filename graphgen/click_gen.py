@@ -241,7 +241,7 @@ class ClickGen(object):
         for router, router_list in in_routers.items():
             for router_iface in router_list:
                 iface = int(re.search('[0-9]+', router_iface).group(0))
-                if self.args.inConstraints:
+                if self.args.in_constraints:
                     # should check if we have overrides
                     self.file_handler.write(
                         "link_in_%d_queue :: ThreadSafeQueue(%d);\n" % (iface, queue_length))
@@ -282,7 +282,7 @@ class ClickGen(object):
                     if not self.arp_less:
                         inputs = in_routers[str(tmp_list[i])]
                         iface = int(re.search('[0-9]+', inputs[counter]).group(0))
-                        if self.args.inConstraints:
+                        if self.args.in_constraints:
                             self.file_handler.write(
                                 "link_out_%d_queue :: ThreadSafeQueue(%d);\n"
                                 % (iface, queue_length)
@@ -419,10 +419,10 @@ class ClickGen(object):
         self.file_handler.write("\n// Routers\n")
 
         if __NX_VERSION__ > 1:
-            nodes = nx.nodes(self.graph).keys()
+            nodes = list(nx.nodes(self.graph).keys())
         else:
-            nodes = nx.nodes(self.graph)
-        nodes.sort()
+            nodes = list(nx.nodes(self.graph))
+
         in_routers = nx.get_node_attributes(self.graph, 'in_routers')
 
         for node in nodes:
@@ -470,9 +470,9 @@ class ClickGen(object):
     def write_links(self):
         self.file_handler.write("\n// Links\n")
         if __NX_VERSION__ > 1:
-            nodes = nx.nodes(self.graph).keys()
+            nodes = list(nx.nodes(self.graph).keys())
         else:
-            nodes = nx.nodes(self.graph)
+            nodes = list(nx.nodes(self.graph))
         nodes.sort()
 
         use_codel = self.args.use_codel
@@ -555,9 +555,9 @@ class ClickGen(object):
         else:
             self.file_handler.write("toh :: ToHost;\n\n")
         if __NX_VERSION__ > 1:
-            routers = nx.nodes(self.graph).keys()
+            routers = list(nx.nodes(self.graph).keys())
         else:
-            routers = nx.nodes(self.graph)
+            routers = list(nx.nodes(self.graph))
         for router in routers:
             if not re.match("[oe][0-9]+", router):
                 neighbors = list(nx.all_neighbors(self.graph, str(router)))

@@ -5,11 +5,20 @@ python:
 env:
   - NETWORKX_VERSION=1.11
   - NETWORKX_VERSION=2.0
+before_install:
+  - ./tests/grab_nagelfar.sh
 install:
   - pip install -q networkx==$NETWORKX_VERSION
   - pip install -r requirements.txt
   - python setup.py -q build
   - python setup.py -q install
-script:
+before_script:
   - find . -iname "*.py" | xargs pylint --ignore=setup.py --extension-pkg-whitelist=netifaces --disable=duplicate-code
   - find . -iname "*.py" | xargs flake8 --exclude=setup.py
+script:
+  - ./graphgen/graph_gen.py -n demo.ns ./tests/inputs/demo.xnet
+  - ./tests/syntax_check.sh demo.ns
+  - ./graphgen/graph_gen.py -n basic.ns ./tests/inputs/basic.xnet
+  - ./tests/syntax_check.sh basic.ns
+  - ./graphgen/graph_gen.py -n demo.ns ./tests/inputs/demo.xnet
+  - ./tests/syntax_check.sh demo.ns
