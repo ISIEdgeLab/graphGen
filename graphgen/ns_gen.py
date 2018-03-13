@@ -122,10 +122,10 @@ class NSGen(object):
         if not self.args.useContainers:
             self.writeToFile(
                 '\n# Create hardware types\n'
-                'tb-make-soft-vtype {click_hardware} {{{click_hardware} {opt_modules}}}\n'
-                'tb-make-soft-vtype {ct_hardware} {{{ct_hardware} {opt_modules}}}\n'
-                'tb-make-soft-vtype {crypto_hardware} {{{crypto_hardware} {opt_modules}}}\n'
-                'tb-make-soft-vtype {client_hardware} {{{client_hardware} {opt_modules}}}\n'.format(
+                'tb-make-soft-vtype click_hardware {{{click_hardware} {opt_modules}}}\n'
+                'tb-make-soft-vtype ct_hardware {{{ct_hardware} {opt_modules}}}\n'
+                'tb-make-soft-vtype crypto_hardware {{{crypto_hardware} {opt_modules}}}\n'
+                'tb-make-soft-vtype client_hardware {{{client_hardware} {opt_modules}}}\n'.format(
                     client_hardware=self.args.clientHardware,
                     crypto_hardware=self.args.cryptoHardware,
                     click_hardware=self.args.clickHardware,
@@ -146,7 +146,6 @@ class NSGen(object):
         for enclave in self.enclaves:
             enc_number = int(re.search('[0-9]+', enclave).group(0))
             enclave_write_str += '\n# Enclave %d\n' % enc_number
-            lstr = ''
 
             # Legacy BLAH.  If number of servers per enclave is 1, don_t add a server number
             lstr = 'ct%d' % enc_number
@@ -157,10 +156,9 @@ class NSGen(object):
                 )
                 enclave_write_str += \
                     'set server{enclave_value}{server_value} [$ns node]\n' \
-                    'tb-set-hardware $server{enclave_value}{server_value} {clientHW}\n'.format(
+                    'tb-set-hardware $server{enclave_value}{server_value} client_hardware\n'.format(
                         enclave_value=enc_number,
                         server_value=server_number if server_number > 1 else "",
-                        clientHW=self.args.clientHardware
                     )
                 if not self.args.useContainers:
                     enclave_write_str += \
@@ -175,10 +173,9 @@ class NSGen(object):
             for client_number in range(1, self.numClients + 1):
                 enclave_write_str += \
                     'set traf{enclave_value}{client_value} [$ns node]\n' \
-                    'tb-set-hardware $traf{enclave_value}{client_value} {clientHW}\n'.format(
+                    'tb-set-hardware $traf{enclave_value}{client_value} client_hardware\n'.format(
                         enclave_value=enc_number,
                         client_value=client_number,
-                        clientHW=self.args.clientHardware
                     )
                 lstr += ' traf%d%d' % (enc_number, client_number)
                 if not self.args.useContainers:
@@ -193,10 +190,9 @@ class NSGen(object):
             enclave_write_str += \
                 'set ct{enclave_value} [$ns node]\n' \
                 'tb-set-node-os $ct{enclave_value} {ct_os}\n' \
-                'tb-set-hardware $ct{enclave_value} {ct_hardware}\n'.format(
+                'tb-set-hardware $ct{enclave_value} ct_hardware\n'.format(
                     enclave_value=enc_number,
                     ct_os=ct_os,
-                    ct_hardware=self.args.ctHardware,
                 )
 
             if __NX_VERSION__ > 1:
@@ -210,10 +206,9 @@ class NSGen(object):
                         'set crypto{enclave_value}{neigh_value} [$ns node]\n' \
                         'tb-set-node-os ${{crypto{enclave_value}{neigh_value}}} {client_os}\n' \
                         'tb-set-hardware ${{crypto{enclave_value}{neigh_value}}} ' \
-                        '{crypto_hardware}\n'.format(
+                        'crypto_hardware\n'.format(
                             enclave_value=enc_number,
                             neigh_value="-%s" % neigh_number if enc_neigh_len > 1 else "",
-                            crypto_hardware=self.args.cryptoHardware,
                             client_os=os,
                         )
             lan_strs.append(lstr)
@@ -222,13 +217,11 @@ class NSGen(object):
         enclave_write_str += \
             '\nset vrouter [$ns node]\n' \
             'tb-set-node-os $vrouter {dpdk_enabled_os}\n' \
-            'tb-set-hardware $vrouter {click_hardware}\n' \
+            'tb-set-hardware $vrouter click_hardware\n' \
             'set control [$ns node]\n' \
             'tb-set-node-os $control {control_os}\n' \
-            'tb-set-hardware $control {control_hardware}\n'.format(
+            'tb-set-hardware $control control_hardware\n'.format(
                 control_os=os,
-                control_hardware=self.args.clientHardware,
-                click_hardware=self.args.clickHardware,
                 dpdk_enabled_os='Ubuntu1604-STD' if self.useDPDK else 'Ubuntu1204-64-CT-CL2',
             )
         self.writeToFile(enclave_write_str)
@@ -265,7 +258,9 @@ class NSGen(object):
         str_to_write = ''
         enclaves = nx.get_node_attributes(self.g, 'enclaves')
         # Write the LANs for each enclave, as well as the ct-crypto link and crpyto-vrouter links
-        for lan, lan_number in zip(lans, range(1, len(lans) + 1)):
+        enclaveNumbers = [int(re.search('[0-9]+', enclave).group(0)) for enclave in enclaves]
+        enclaveNumbers.sort()
+        for lan, lan_number in zip(lans, enclaveNumbers):
             str_to_write += \
                 'set lan{lan_value} [$ns make-lan "{lan_name}" {bandwidth} {delay}]\n'.format(
                     lan_value=lan_number,
@@ -283,7 +278,7 @@ class NSGen(object):
                 edge = (neighbor, enclave)
                 edgeInBW = bws.get(edge, default_bw)
                 edgeInDelay = delays.get(edge, default_delay)
-                lan_value = str(lan_number) + '-' + str(neighbor_num) \
+                lan_value = str(lan_number) + '-' + str(neighbor_num[0]) \
                     if len(neighbors) > 1 else str(lan_number)
                 if self.useCrypto:
                     link_str = '{prefix_str}set link{lan_value} [$ns duplex-link $ct{lan_number} ' \
@@ -391,36 +386,37 @@ class NSGen(object):
                             crypto_net=re_enclave,
                         )
 
+            # not sure why this section forces to str() while others dont...
             enclave_number = int(re.search('[0-9]+', enclave).group(0))
             for neighbors in range(enclave_neigh_len):
                 re_enclave = int(re.search('[0-9]+', ifs[enclave][neighbors]).group(0))
                 if self.useCrypto:
                     egress_str += 'tb-set-ip-link ${{crypto{crypto_device}}} ' \
                         '${{elink{elink_name}}} 10.{re_enclave}.10.1\n'.format(
-                            crypto_device=enclave_number + '-' + neighbors
-                            if enclave_neigh_len > 1 else enclave_number,
-                            elink_name=enclave_number + '-' + neighbors
-                            if enclave_neigh_len > 1 else enclave_number,
+                            crypto_device=str(enclave_number) + '-' + str(neighbors)
+                            if enclave_neigh_len > 1 else str(enclave_number),
+                            elink_name=str(enclave_number) + '-' + str(neighbors)
+                            if enclave_neigh_len > 1 else str(enclave_number),
                             re_enclave=re_enclave,
                         )
                     egress_str += 'tb-set-ip-link $vrouter ${{elink{elink_name}}} ' \
                         '10.{re_enclave}.10.2\n'.format(
-                            elink_name=enclave_number + '-' + neighbors
-                            if enclave_neigh_len > 1 else enclave_number,
+                            elink_name=str(enclave_number) + '-' + str(neighbors)
+                            if enclave_neigh_len > 1 else str(enclave_number),
                             re_enclave=re_enclave,
                         )
                 else:
                     egress_str += 'tb-set-ip-link $ct{enclave_value} ${{elink{elink_name}}} '\
                         '10.{re_enclave}.2.1\n'.format(
-                            elink_name=enclave_number + '-' + neighbors
-                            if enclave_neigh_len > 1 else enclave_number,
+                            elink_name=str(enclave_number) + '-' + str(neighbors)
+                            if enclave_neigh_len > 1 else str(enclave_number),
                             re_enclave=re_enclave,
                             enclave_value=enclave_number,
                         )
                     egress_str += 'tb-set-ip-link $vrouter ${{elink{elink_name}}} ' \
                         '10.{re_enclave}.2.2\n'.format(
-                            elink_name=enclave_number + '-' + neighbors
-                            if enclave_neigh_len > 1 else enclave_number,
+                            elink_name=str(enclave_number) + '-' + str(neighbors)
+                            if enclave_neigh_len > 1 else str(enclave_number),
                             re_enclave=re_enclave,
                         )
 
