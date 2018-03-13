@@ -203,16 +203,22 @@ class ClickConfig(object):
 
         for info in inputs:
             if 'vlan' not in info:
-                DPDKArrStr = self.data.get('DPDKArrival', "")
-                DPDKDetStr = self.data.get('DPDKDeparture', "")
-                DPDKArrStr = "%s\nFromDPDKDevice(%d) -> VLANDecap() -> vlanmux;" % (DPDKArrStr, info['port'])
+                dpdk_arrive_str = self.data.get('DPDKArrival', "")
+                dpdk_depart_str = self.data.get('DPDKDeparture', "")
+                dpdk_arrive_str = "%s\nFromDPDKDevice(%d) -> VLANDecap() -> vlanmux;" % (
+                    dpdk_arrive_str, info['port']
+                )
                 if self.args.burst != 0:
-                    DPDKDetStr = "%s\noutDPDK%d :: ToDPDKDevice(%d, BURST %d);" % (DPDKDetStr, info['port'], info['port'], self.args.burst)
+                    dpdk_depart_str = "%s\noutDPDK%d :: ToDPDKDevice(%d, BURST %d);" % (
+                        dpdk_depart_str, info['port'], info['port'], self.args.burst
+                    )
                 else:
-                    DPDKDetStr = "%s\noutDPDK%d :: ToDPDKDevice(%d);" % (DPDKDetStr, info['port'], info['port'])
-                    
-                self.data['DPDKArrival'] = DPDKArrStr
-                self.data['DPDKDeparture'] = DPDKDetStr
+                    dpdk_depart_str = "%s\noutDPDK%d :: ToDPDKDevice(%d);" % (
+                        dpdk_depart_str, info['port'], info['port']
+                    )
+
+                self.data['DPDKArrival'] = dpdk_arrive_str
+                self.data['DPDKDeparture'] = dpdk_depart_str
             else:
                 ifnum = int(info['ip'].split('.')[1])
                 our16 = na.IPNetwork('%s/255.255.0.0' % info['ip'])
@@ -224,18 +230,17 @@ class ClickConfig(object):
                 self.data['if%d_gw' % ifnum] = our_routes["%s" % our16.cidr]
                 self.data['out_if%d' % ifnum] = "outDPDK%d" % info['port']
 
-        
+
     def parse_routing(self):
-        (output, error) = Popen(["ip", "route"], stdout = PIPE, stderr = PIPE).communicate()
+        output, _ = Popen(["ip", "route"], stdout=PIPE, stderr=PIPE).communicate()
         out = output.splitlines()
-        
-        c = 1
+
+        # pylint: disable=too-many-boolean-expressions
         for line in out:
             tokens = line.strip("\n").split()
-            if (len(tokens) >= 5 and tokens[1] == "via" and
-                tokens[0] != 'default' and
-                (tokens[0] != '192.168.0.0/22' and tokens[0] != '172.16.0.0/12' and
-                 tokens[0] != '192.168.0.0/16' and tokens[0] != '224.0.0.0/4')):
+            if (len(tokens) >= 5 and tokens[1] == "via" and tokens[0] != 'default' and
+                    (tokens[0] != '192.168.0.0/22' and tokens[0] != '172.16.0.0/12' and
+                     tokens[0] != '192.168.0.0/16' and tokens[0] != '224.0.0.0/4')):
                 ifnum = int(tokens[2].split('.')[1])
                 if ifnum == 100:
                     ifnum = int(tokens[2].split('.')[2])
@@ -265,38 +270,39 @@ class ClickConfig(object):
                     self.data['if%d_gw' % ifnum] = ''
 
     def process_arp(self):
-        (output, error) = Popen(["arp", "-a"], stdout = PIPE, stderr = PIPE).communicate()
-	
+        output, _ = Popen(["arp", "-a"], stdout=PIPE, stderr=PIPE).communicate()
         out = output.splitlines()
         for line in out:
             tokens = line.strip("\n").split()
             if len(tokens) == 7 and tokens[0] != '?':
                 if tokens[-1] in self.ifs:
-                    self.data['if%s_friend' % self.ifs[tokens[-1]]]  = tokens[3]
-                    
-        
+                    self.data['if%s_friend' % self.ifs[tokens[-1]]] = tokens[3]
+
+
+    # pylint says ifs dont have indexs, not sure what type they even are, string, list, dict?
+    # pylint: disable=no-member
     def generate_route_str(self):
         route_str = ""
-        dev_null = open('/dev/null', 'w')
-        for ip, route in self.routes.iteritems():
+        for ip_addr, route in self.routes.iteritems():
             if route['gw'] != "":
-                route_str = "%s,\n\t\t\t %s %s %d" % (route_str, ip, route['gw'],
-                                              self.ifs.index(route['if']))
-    
+                route_str = "%s,\n\t\t\t %s %s %d" % (
+                    route_str, ip_addr, route['gw'], self.ifs.index(route['if']))
             else:
-                route_str = "%s,\n\t\t\t %s %d" % (route_str, ip,
-                                                   self.ifs.index(route['if']))
+                route_str = "%s,\n\t\t\t %s %d" % (
+                    route_str, ip_addr, self.ifs.index(route['if']))
         self.data['routing'] = route_str
-                
+
+
     def write_config(self):
         if not self.use_dpdk:
-	    time.sleep(10)
+            time.sleep(10)
         config = self.template.substitute(self.data)
-        fh = open(self.out_file, "w")
-        fh.write(config)
-        fh.close()
+        fh_fd = open(self.out_file, "w")
+        fh_fd.write(config)
+        fh_fd.close()
 
-    def updateConfig(self):
+
+    def update_config(self):
         if not self.use_dpdk:
             self.parse_routing()
             #self.generate_route_str()
@@ -304,17 +310,23 @@ class ClickConfig(object):
                 self.process_arp()
         else:
             self.generate_inputs()
-        
+
         self.write_config()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Update a click template with local state to correctly configure click.')
+    # pylint: disable=invalid-name
+    parser = argparse.ArgumentParser(
+        description='Update a click template with local state to correctly configure click.'
+    )
     parser.add_argument('-d', dest='debug', help='Enable debug statements')
     parser.add_argument('-v', dest='verbose', help='Enable verbose output (same as debug atm)')
-    parser.add_argument('--burst', dest='burst', default=0, type=int, help='Set the output burst parameter for DPDK links')
+    parser.add_argument(
+        '--burst', dest='burst', default=0, type=int,
+        help='Set the output burst parameter for DPDK links'
+    )
     args = parser.parse_args()
-    
+
     if args.debug or args.verbose:
         logging.basicConfig(filename='/tmp/click_config.LOGGER', level=logging.DEBUG)
     else:
@@ -323,6 +335,4 @@ if __name__ == "__main__":
     ru = RouteUpdate()
     ru.update_routes()
     uc = ClickConfig(args)
-    uc.updateConfig()
-
-
+    uc.update_config()
