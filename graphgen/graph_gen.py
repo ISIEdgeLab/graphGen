@@ -20,7 +20,7 @@ import click_gen as click_gen
 import ns_gen as ns_gen
 
 # networkx 2.x is not backwards compatable with 1.x
-__NX_VERSION__ = int(nx.__version__.split('.')[0])
+__NX_VERSION__ = int(nx.__version__.split(".")[0])
 
 
 def read_graph(filename):

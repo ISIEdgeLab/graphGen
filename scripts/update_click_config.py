@@ -1,4 +1,6 @@
 #!/bin/python
+from __future__ import print_function
+
 import sys
 import time
 import logging
@@ -38,21 +40,21 @@ class OneHopNeighbors(object):
     def get_neighbors(self):
         (local_addrs, local_nets) = self.get_local_addresses()
         if not local_addrs:
-            LOGGER.warn('Unable to get local addresses - cannot continue.')
+            LOGGER.warning('Unable to get local addresses - cannot continue.')
             return None
         devnull = open(os.devnull, 'w')
         one_hop_nbrs = {}
-        for addr, host in self.hosts.iteritems():
+        for addr, host in self.hosts.items():
             LOGGER.debug('comp: %s <--> %s', addr, local_addrs.keys())
             if addr not in local_addrs.values():
                 ip_addr = na.IPAddress(addr)
-                for lhost, network in local_nets.iteritems():
+                for lhost, network in local_nets.items():
                     if ip_addr in network:
                         cmd = 'ping -c 1 {}'.format(addr)
                         try:
                             check_call(cmd.split(' '), stdout=devnull, stderr=STDOUT)
                         except (OSError, ValueError) as err:
-                            LOGGER.warn('Unable to run "%s": %s', cmd, str(err))
+                            LOGGER.warning('Unable to run "%s": %s', cmd, str(err))
                             continue
                         except CalledProcessError:
                             LOGGER.info(
@@ -85,13 +87,14 @@ class OneHopNeighbors(object):
                         "%s/%s" % (reg_match.group(1), reg_match.group(3))
                     )
                 else:
-                    LOGGER.warn(
+                    LOGGER.warning(
                         'Found unnamed address in local interfaces (probably control '
                         'net): %s', reg_match.group(1)
                     )
 
         LOGGER.debug('local addresses: %s', local_addrs)
         return (local_addrs, local_nets)
+
 
 # pylint: disable=too-few-public-methods
 class RouteUpdate(object):
@@ -115,7 +118,6 @@ class RouteUpdate(object):
                          tokens[0] != '192.168.0.0/16' and tokens[0] != '224.0.0.0/4')):
                     self.ifaces.append(tokens[2])
 
-
     def update_routes(self):
         for line in self.lines_to_remove:
             route_to_rem = 'sudo ip route del %s' % line
@@ -126,7 +128,7 @@ class RouteUpdate(object):
             ip_addr = na.IPAddress(addrs[ni.AF_INET][0]['addr'])
             net = na.IPNetwork('%s/255.255.0.0' % ip_addr)
             route_to_add = 'sudo ip route add %s via %s dev %s' % (net.cidr, (ip_addr - 1), iface)
-            print route_to_add
+            print(route_to_add)
             check_call(route_to_add.split(), stdout=PIPE, stderr=PIPE)
 
 
@@ -188,7 +190,6 @@ class ClickConfig(object):
         out.close()
         err.close()
 
-
     def generate_inputs(self):
         fh_routes = open(self.routes_file)
         fh_inputs = open(self.input_file)
@@ -229,7 +230,6 @@ class ClickConfig(object):
                 self.data['if%d_16' % ifnum] = "%s" % our16.cidr
                 self.data['if%d_gw' % ifnum] = our_routes["%s" % our16.cidr]
                 self.data['out_if%d' % ifnum] = "outDPDK%d" % info['port']
-
 
     def parse_routing(self):
         output, _ = Popen(["ip", "route"], stdout=PIPE, stderr=PIPE).communicate()
@@ -278,12 +278,11 @@ class ClickConfig(object):
                 if tokens[-1] in self.ifs:
                     self.data['if%s_friend' % self.ifs[tokens[-1]]] = tokens[3]
 
-
     # pylint says ifs dont have indexs, not sure what type they even are, string, list, dict?
     # pylint: disable=no-member
     def generate_route_str(self):
         route_str = ""
-        for ip_addr, route in self.routes.iteritems():
+        for ip_addr, route in self.routes.items():
             if route['gw'] != "":
                 route_str = "%s,\n\t\t\t %s %s %d" % (
                     route_str, ip_addr, route['gw'], self.ifs.index(route['if']))
@@ -291,7 +290,6 @@ class ClickConfig(object):
                 route_str = "%s,\n\t\t\t %s %d" % (
                     route_str, ip_addr, self.ifs.index(route['if']))
         self.data['routing'] = route_str
-
 
     def write_config(self):
         if not self.use_dpdk:
@@ -301,11 +299,10 @@ class ClickConfig(object):
         fh_fd.write(config)
         fh_fd.close()
 
-
     def update_config(self):
         if not self.use_dpdk:
             self.parse_routing()
-            #self.generate_route_str()
+            # self.generate_route_str()
             if self.arpless:
                 self.process_arp()
         else:

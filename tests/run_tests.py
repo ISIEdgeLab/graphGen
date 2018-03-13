@@ -21,7 +21,7 @@ SUFFIX = '_test'
 class DummyArgs(object):
     # pylint: disable=invalid-name, too-many-instance-attributes, too-few-public-methods
     def __init__(self):
-        self.g = None # this is not an arg but object of nsgen
+        self.g = None  # this is not an arg but object of nsgen
         self.ns_file = None
         self.output = 'vrouter.template'
         self.draw_output = None
@@ -86,8 +86,10 @@ def diff_check_files(test_file, extention, suffix=SUFFIX):
     # pylint: disable=superfluous-parens
     return (diff_p_rc == 0)
 
+
 def get_test_files():
     return os.listdir(INPUT_DIR)
+
 
 class TestGeneratedFiles(unittest.TestCase):
     '''
@@ -105,13 +107,13 @@ class TestGeneratedFiles(unittest.TestCase):
         cmdline = DummyArgs()
         for test_file in get_test_files():
             # for each file in input test directory, get base name
-            base_name = OUTPUT_DIR+'/'+test_file.split('.')[0]
-            cmdline.ns_file = base_name+SUFFIX+'.ns'
+            base_name = OUTPUT_DIR + '/' + test_file.split('.')[0]
+            cmdline.ns_file = base_name + SUFFIX + '.ns'
             # call nsGen code with fake command line arguments
             ns_obj = nsGen.NSGen(args=cmdline)
             # last thing we need is to configure the graph, get enclaves, and external links
-            #cmdline.g = networkx.read_edgelist(INPUT_DIR+'/'+test_file)
-            ns_obj.g = readGraph(INPUT_DIR+'/'+test_file)
+            # cmdline.g = networkx.read_edgelist(INPUT_DIR+'/'+test_file)
+            ns_obj.g = readGraph(INPUT_DIR + '/' + test_file)
             # write out our generated ns file
             ns_obj.writeNS()
             # checkout that the outputs are the same
@@ -119,6 +121,7 @@ class TestGeneratedFiles(unittest.TestCase):
 
     def test_png(self):
         pass
+
 
 class TestFunctionality(unittest.TestCase):
     '''
