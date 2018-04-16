@@ -368,22 +368,22 @@ def main():
         '-r', dest='routes', type=str, help='Specify input routes in the given ssv file'
     )
     parser.add_argument(
-        '--click-hardware', type=str, dest='clickHardware', default='dl380g3',
+        '--click-hardware', type=str, dest='click_hardware', default='dl380g3',
         choices=hardware_types,
         help='Specify the specific hardware device you would like to use for Click',
     )
     parser.add_argument(
-        '--crypto-hardware', type=str, dest='cryptoHardware', default='MicroCloud',
+        '--crypto-hardware', type=str, dest='crypto_hardware', default='MicroCloud',
         choices=hardware_types,
         help='Specify the specific hardware device you would like to use for Enclave crypto device',
     )
     parser.add_argument(
-        '--client-hardware', type=str, dest='clientHardware', default='MicroCloud',
+        '--client-hardware', type=str, dest='client_hardware', default='MicroCloud',
         choices=hardware_types,
         help='Specify the specific hardware device you would like to use for client/servers',
     )
     parser.add_argument(
-        '--ct-hardware', type=str, dest='ctHardware', default='MicroCloud',
+        '--ct-hardware', type=str, dest='ct_hardware', default='MicroCloud',
         choices=hardware_types,
         help='Specify the specific hardware device you would like to use for CT nodes',
     )
@@ -401,7 +401,7 @@ def main():
         help='Default Loss rate for each link (0.0)',
     )
     parser.add_argument(
-        '--set-startcmd', dest='startCmd', default="",
+        '--set-startcmd', dest='start_cmd', default="",
         help='Set a default start command to run on all nodes'
     )
     parser.add_argument(
@@ -413,18 +413,18 @@ def main():
         help="Default OS for non CT nodes"
     )
     parser.add_argument(
-        '--num-servers', dest='numServers', default=1, help='Number of servers per enclave'
+        '--num-servers', dest='num_servers', default=1, help='Number of servers per enclave'
     )
     parser.add_argument(
-        '--num-clients', dest='numClients', default=8, help='Number of \"traf\" nodes per enclave'
+        '--num-clients', dest='num_clients', default=8, help='Number of \"traf\" nodes per enclave'
     )
     parser.add_argument(
-        '--access-link-constraints', dest='inConstraints', default=False,
+        '--access-link-constraints', dest='in_constraints', default=False,
         action='store_const', const=True,
         help='Add link constraints to the access links for the vrouter',
     )
     parser.add_argument(
-        '--enable-dpdk', dest='useDPDK', default=True,
+        '--enable-dpdk', dest='use_dpdk', default=True,
         action='store_const', const=True,
         help='Create Click template for DPDK support (note DPDK automatically enables ARP)',
         )
@@ -433,16 +433,17 @@ def main():
         help='Configure click to use ARP',
     )
     parser.add_argument(
-        '--disable-codel', dest='useCodel', default=True, action='store_const', const=False,
+        '--disable-codel', dest='use_codel', default=True, action='store_const', const=False,
         help='Disable CoDel on all links',
     )
     parser.add_argument(
-        '--disable-containers', dest='useContainers', default=True,
+        '--disable-containers', dest='use_containers', default=True,
         action='store_const', const=False,
         help='Disable Containerization',
     )
     parser.add_argument(
-        '--disable-crypto-nodes', dest='useCrypto', default=True, action='store_const', const=False,
+        '--disable-crypto-nodes', dest='use_crypto', default=True,
+        action='store_const', const=False,
         help='Do not add any crypto nodes to enclaves',
     )
     parser.add_argument(
@@ -471,10 +472,8 @@ def main():
     gen.write_click(args)
     if args.ns_file:
         gen.write_ns()
-    if args.help:
+    if not args.infile:
         args.print_help()
-        exit(1)
-    if args.version:
         exit(1)
 
 if __name__ == "__main__":
