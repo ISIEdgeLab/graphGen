@@ -190,17 +190,17 @@ class ClickGen(object):
                 counter = int(re.search('[0-9]+', router).group(0))
                 if self.args.use_dpdk:
                     self.file_handler.write(
-                        "c%d[1] -> ar%d :: arpResponder(${if%d_ip} ${if%d_eth}) -> out%d;\n"
+                        "c%d[1] -> ar%d :: ARPResponder(${if%d_ip} ${if%d_eth}) -> out%d;\n"
                         % (counter, counter, counter, counter, counter))
                     self.file_handler.write(
-                        "arpq%d :: arpQuerier(${if%d_ip}, ${if%d_eth}) -> out%d;\n"
+                        "arpq%d :: ARPQuerier(${if%d_ip}, ${if%d_eth}) -> out%d;\n"
                         % (counter, counter, counter, counter))
                 else:
                     self.file_handler.write(
-                        "c%d[1] -> ar%d :: arpResponder(${if%d}:ip ${if%d}:eth) -> out%d;\n"
+                        "c%d[1] -> ar%d :: ARPResponder(${if%d}:ip ${if%d}:eth) -> out%d;\n"
                         % (i, i, counter, counter, i))
                     self.file_handler.write(
-                        "arpq%d :: arpQuerier(${if%d}:ip, ${if%d}:eth) -> out%d;\n"
+                        "arpq%d :: ARPQuerier(${if%d}:ip, ${if%d}:eth) -> out%d;\n"
                         % (i, counter, counter, i))
                 self.file_handler.write("c%d[2] -> arpt;\n" % counter)
                 self.file_handler.write("arpt[%d] -> [1]arpq%d;\n\n" % (i - 1, counter))
