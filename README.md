@@ -1,7 +1,9 @@
-# GraphGen
-=======
+GraphGen
+========
 
 [![Build Status](https://travis-ci.org/ISIEdgeLab/graphGen.svg?branch=master)](https://travis-ci.org/ISIEdgeLab/graphGen)
+
+# Description
 
 GraphGen is a framework for creating virtual topologies through the click modular router in deterlab (https://www.isi.deterlab.net).  It has multiple components, but the main two are the topology generation through `graphGen/ns_gen.py` which generates an ns2/tcl file describing the devices, operating systems, link components, etc.  The second component is `graphGen/click_gen.py` which is responsible for generating click's virtual router template (default: vrouter.template) that is plugged into click to implement the network components of the topology.
 
