@@ -156,9 +156,10 @@ class NSGen(object):
                 )
                 enclave_write_str += \
                     'set server{enclave_value}{server_value} [$ns node]\n' \
-                    'tb-set-hardware $server{enclave_value}{server_value} client_hardware\n'.format(
+                    'tb-set-hardware $server{enclave_value}{server_value} {client_hw}\n'.format(
                         enclave_value=enc_number,
                         server_value=server_number if server_number > 1 else "",
+                        client_hw=self.args.client_hardware
                     )
                 if not self.args.use_containers:
                     enclave_write_str += \
@@ -173,9 +174,10 @@ class NSGen(object):
             for client_number in range(1, self.num_clients + 1):
                 enclave_write_str += \
                     'set traf{enclave_value}{client_value} [$ns node]\n' \
-                    'tb-set-hardware $traf{enclave_value}{client_value} client_hardware\n'.format(
+                    'tb-set-hardware $traf{enclave_value}{client_value} {client_hw}\n'.format(
                         enclave_value=enc_number,
                         client_value=client_number,
+                        client_hw=self.args.client_hardware
                     )
                 lstr += ' traf%d%d' % (enc_number, client_number)
                 if not self.args.use_containers:
@@ -190,9 +192,10 @@ class NSGen(object):
             enclave_write_str += \
                 'set ct{enclave_value} [$ns node]\n' \
                 'tb-set-node-os $ct{enclave_value} {ct_os}\n' \
-                'tb-set-hardware $ct{enclave_value} ct_hardware\n'.format(
+                'tb-set-hardware $ct{enclave_value} {ct_hardware}\n'.format(
                     enclave_value=enc_number,
                     ct_os=ct_os,
+                    ct_hardware=self.args.ct_hardware,
                 )
 
             if __NX_VERSION__ > 1:
@@ -206,9 +209,10 @@ class NSGen(object):
                         'set crypto{enclave_value}{neigh_value} [$ns node]\n' \
                         'tb-set-node-os ${{crypto{enclave_value}{neigh_value}}} {client_os}\n' \
                         'tb-set-hardware ${{crypto{enclave_value}{neigh_value}}} ' \
-                        'crypto_hardware\n'.format(
+                        '{crypto_hardware}\n'.format(
                             enclave_value=enc_number,
                             neigh_value="-%s" % neigh_number if enc_neigh_len > 1 else "",
+                            crypto_hardware=self.args.crypto_hardware,
                             client_os=os,
                         )
             lan_strs.append(lstr)
@@ -217,11 +221,13 @@ class NSGen(object):
         enclave_write_str += \
             '\nset vrouter [$ns node]\n' \
             'tb-set-node-os $vrouter {dpdk_enabled_os}\n' \
-            'tb-set-hardware $vrouter click_hardware\n' \
+            'tb-set-hardware $vrouter {click_hardware}\n' \
             'set control [$ns node]\n' \
             'tb-set-node-os $control {control_os}\n' \
-            'tb-set-hardware $control control_hardware\n'.format(
+            'tb-set-hardware $control {control_hardware}\n'.format(
                 control_os=os,
+                control_hardware=self.args.client_hardware,
+                click_hardware=self.args.click_hardware,
                 dpdk_enabled_os='Ubuntu1604-STD' if self.use_dpdk else 'Ubuntu1204-64-CT-CL2',
             )
         self.writeToFile(enclave_write_str)
