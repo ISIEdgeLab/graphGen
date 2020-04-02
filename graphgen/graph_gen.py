@@ -458,6 +458,10 @@ def main():
         '--version', action='version',
         version='%(prog)s {version}'.format(version=__version__)
     )
+    parser.add_argument(
+        '--base-directory', dest='base_directory', default='/share/click/',
+        help='Specify the base directory to search files (default: /share/click/ )',
+    )
 
     args = parser.parse_args()
 
