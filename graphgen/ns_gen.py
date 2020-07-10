@@ -24,6 +24,7 @@ class NSGen(object):
         self.enclaves = -1
         self.num_enclaves = -1
         self.num_tees = -1
+        self.base_directory = None
 
     def set_graph(self, g):
         ''' set NSGen's the networkx graph '''
